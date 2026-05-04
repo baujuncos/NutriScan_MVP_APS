@@ -11,6 +11,10 @@ export function calcularEdad(fechaNacimiento: string): number {
   return edad;
 }
 
+// Harris-Benedict revised equation constants (Roza & Shizgal, 1984)
+const HB_MALE = { base: 66.47, weight: 13.75, height: 5.003, age: 6.755 };
+const HB_FEMALE = { base: 655.1, weight: 9.563, height: 1.85, age: 4.676 };
+
 export function calcularTMB(
   sexo: 'M' | 'F',
   pesoKg: number,
@@ -18,9 +22,9 @@ export function calcularTMB(
   edad: number,
 ): number {
   if (sexo === 'M') {
-    return 66.47 + 13.75 * pesoKg + 5.003 * alturaCm - 6.755 * edad;
+    return HB_MALE.base + HB_MALE.weight * pesoKg + HB_MALE.height * alturaCm - HB_MALE.age * edad;
   }
-  return 655.1 + 9.563 * pesoKg + 1.85 * alturaCm - 4.676 * edad;
+  return HB_FEMALE.base + HB_FEMALE.weight * pesoKg + HB_FEMALE.height * alturaCm - HB_FEMALE.age * edad;
 }
 
 export function calcularGET(tmb: number, factorActividad: ActivityFactor): number {

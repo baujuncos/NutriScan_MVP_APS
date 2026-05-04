@@ -39,7 +39,7 @@ const LIKERT_DESC = ['Nunca', '', '', '', '', 'Siempre'];
 export default function EncuestaPsicologicaPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [respuestas, setRespuestas] = useState<(number | null)[]>(Array(25).fill(null));
+  const [respuestas, setRespuestas] = useState<(number | null)[]>(Array(PREGUNTAS.length).fill(null));
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
