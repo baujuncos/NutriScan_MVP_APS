@@ -101,6 +101,8 @@ const FRECUENCIA_COMPETENCIAS_OPTIONS = [
   'Una vez por mes',
 ];
 
+const MAX_ANIO = 5;
+
 // -------------------------------------------------------------------
 // Schema
 // -------------------------------------------------------------------
@@ -144,7 +146,7 @@ export default function PerfilAcademicoPage() {
     const frecuenciaPracticas = parseInt(data.frecuencia_practicas_semana, 10);
     const horasPractica = parseFloat(data.horas_practica);
 
-    if (isNaN(anio) || anio < 1 || anio > 5) {
+    if (isNaN(anio) || anio < 1 || anio > MAX_ANIO) {
       setError('anio', { message: 'Año inválido' });
       return;
     }

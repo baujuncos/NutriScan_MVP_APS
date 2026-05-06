@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { extractNombreApellido } from '@/lib/roles';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -32,23 +33,12 @@ export async function GET(request: NextRequest) {
           if (!existingProfile) {
             const email = user.email ?? '';
             const isUCC = email.toLowerCase().endsWith('@ucc.edu.ar');
-
-            // Determine nombre and apellido from metadata
-            const metaNombre: string =
-              (user.user_metadata?.nombre as string) ||
-              (user.user_metadata?.full_name as string) ||
-              '';
-            const metaApellido: string = (user.user_metadata?.apellido as string) || '';
-            // For Google users full_name contains the complete name
-            const nombre = metaNombre.includes(' ') && !metaApellido
-              ? metaNombre.split(' ')[0]
-              : metaNombre;
-            const apellido = metaApellido || (metaNombre.includes(' ')
-              ? metaNombre.split(' ').slice(1).join(' ')
-              : '');
+            const { nombre, apellido } = extractNombreApellido(
+              user.user_metadata as Record<string, unknown>,
+            );
 
             if (roleParam === 'investigador') {
-              // Investigador confirmed via Google OAuth or email link with code in URL
+              // Investigador confirmed via Google OAuth or email link with role in URL
               await supabase.from('profiles').insert({
                 user_id: user.id,
                 nombre,
@@ -67,8 +57,8 @@ export async function GET(request: NextRequest) {
               const base = isLocalEnv
                 ? origin
                 : forwardedHost
-                ? `https://${forwardedHost}`
-                : origin;
+                  ? `https://${forwardedHost}`
+                  : origin;
               return NextResponse.redirect(`${base}/elegir-uso`);
             } else {
               // Non-UCC users are always 'particular'
@@ -104,4 +94,5 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(`${origin}/login?error=auth_callback_error`);
 }
+
 

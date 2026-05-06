@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { extractNombreApellido } from '@/lib/roles';
 import Button from '@/components/ui/Button';
 
 type Usage = 'deportista_ucc' | 'particular';
@@ -27,7 +28,7 @@ export default function ElegirUsoPage() {
         return;
       }
 
-      // If the user already has a profile (e.g. they re-visit this page), redirect to onboarding
+      // If the user already has a profile (e.g. they re-visit this page), redirect accordingly
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, physical_completed')
@@ -50,7 +51,9 @@ export default function ElegirUsoPage() {
     };
 
     checkUser();
-  }, [router, supabase]);
+  // supabase and router are stable references created outside the effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async () => {
     if (!selectedUsage) return;
@@ -66,24 +69,15 @@ export default function ElegirUsoPage() {
       return;
     }
 
-    const email = user.email ?? '';
-    const metaNombre: string =
-      (user.user_metadata?.nombre as string) ||
-      (user.user_metadata?.full_name as string) ||
-      '';
-    const metaApellido: string = (user.user_metadata?.apellido as string) || '';
-    const nombre = metaNombre.includes(' ') && !metaApellido
-      ? metaNombre.split(' ')[0]
-      : metaNombre;
-    const apellido =
-      metaApellido ||
-      (metaNombre.includes(' ') ? metaNombre.split(' ').slice(1).join(' ') : '');
+    const { nombre, apellido } = extractNombreApellido(
+      user.user_metadata as Record<string, unknown>,
+    );
 
     const { error } = await supabase.from('profiles').insert({
       user_id: user.id,
       nombre,
       apellido,
-      email,
+      email: user.email ?? '',
       role: selectedUsage,
       physical_completed: false,
       academic_completed: false,
