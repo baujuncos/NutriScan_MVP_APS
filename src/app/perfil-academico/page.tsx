@@ -7,30 +7,133 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
+// -------------------------------------------------------------------
+// Static data
+// -------------------------------------------------------------------
+
+const UNIDADES_ACADEMICAS = [
+  'Arquitectura y Diseño',
+  'Ciencias Políticas y RRII',
+  'Ciencias Agropecuarias',
+  'Ciencias de la Salud',
+  'Ciencias Económicas',
+  'Derecho y Sociales',
+  'Educación',
+  'Filosofía y Humanidades',
+  'Ingeniería',
+  'Teología',
+] as const;
+
+type UnidadAcademica = (typeof UNIDADES_ACADEMICAS)[number];
+
+const CARRERAS_POR_UNIDAD: Record<UnidadAcademica, string[]> = {
+  'Arquitectura y Diseño': ['Arquitectura', 'Diseño', 'Diseño de Indumentaria'],
+  'Ciencias Políticas y RRII': [
+    'Ciencias Políticas',
+    'RRII',
+    'Gestión Pública',
+    'Tec. en Gestión Pública',
+  ],
+  'Ciencias Agropecuarias': [
+    'Ing. Agronómica',
+    'Veterinaria',
+    'Tec. en Producción Agropec.',
+    'Tec. en Biotec',
+  ],
+  'Ciencias de la Salud': [
+    'Medicina',
+    'Odontología',
+    'Bioquímica',
+    'Farmacia',
+    'Nutrición',
+    'Psicología',
+    'Kinesiología',
+    'Terapia Ocupacional',
+    'Enfermería',
+    'Tec. Alimentos',
+    'Instr. Quirúrgica',
+    'Cosmetología',
+  ],
+  'Ciencias Económicas': [
+    'Contador',
+    'Adm. Empresas',
+    'Adm. Negocios Digitales',
+    'Mkt. Digital',
+    'Gestión Gerencial',
+    'Adm. Agronegocios',
+  ],
+  'Derecho y Sociales': ['Abogacía', 'Notariado', 'Comunicación Estratégica'],
+  Educación: [
+    'Cs. de la Educación',
+    'Psicopedagogía',
+    'Prof. en Educación',
+    'Gestión Educ.',
+    'Educación Inicial',
+  ],
+  'Filosofía y Humanidades': ['Filosofía', 'Prof. en Filosofía', 'Filosofía y Humanidades'],
+  Ingeniería: [
+    'Ing. Informática',
+    'Ing. Computación',
+    'Ing. Electrónica',
+    'Ing. Civil',
+    'Ing. Industrial',
+    'Ing. Mecánica',
+    'Ing. en Sistemas',
+    'IA y Ciencia de Datos',
+    'Bioinformática',
+    'Tec. Ciencia de Datos',
+    'Tec. Desarrollo SW',
+  ],
+  Teología: ['Teología', 'Prof. en Teología', 'Bach. Eclesiástico'],
+};
+
+const POSICIONES_POR_DEPORTE: Record<string, string[]> = {
+  hockey: ['Delantera', 'Defensa', 'Mediocampista', 'Arquera'],
+  basquet: ['Base', 'Escolta', 'Alero', 'Pivot', 'Ala-Pivot'],
+};
+
+const FRECUENCIA_COMPETENCIAS_OPTIONS = [
+  'Todas las semanas',
+  'Más de una vez por semana',
+  'Cada dos semanas',
+  'Una vez por mes',
+];
+
+// -------------------------------------------------------------------
+// Schema
+// -------------------------------------------------------------------
+
 const schema = z.object({
-  carrera: z.string().min(2, 'Ingresa tu carrera'),
+  unidad_academica: z.string().min(1, 'Selecciona tu unidad académica'),
+  carrera: z.string().min(1, 'Selecciona tu carrera'),
   anio: z.string().min(1, 'Selecciona el año'),
   deporte: z.string().min(1, 'Selecciona un deporte'),
-  posicion: z.string().min(1, 'Ingresa tu posición'),
+  posicion: z.string().min(1, 'Selecciona tu posición'),
   frecuencia_practicas_semana: z.string().min(1, 'Ingresa la frecuencia de prácticas'),
   horas_practica: z.string().min(1, 'Ingresa las horas de práctica'),
-  frecuencia_competencias: z.string().min(1, 'Ingresa la frecuencia de competencias'),
+  frecuencia_competencias: z.string().min(1, 'Selecciona la frecuencia de competencias'),
 });
 
 type FormData = z.infer<typeof schema>;
+
+// -------------------------------------------------------------------
+// Component
+// -------------------------------------------------------------------
 
 export default function PerfilAcademicoPage() {
   const router = useRouter();
   const supabase = createClient();
   const [serverError, setServerError] = useState('');
+  const [selectedUnidad, setSelectedUnidad] = useState<UnidadAcademica | ''>('');
+  const [selectedDeporte, setSelectedDeporte] = useState('');
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    setValue,
     setError,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
@@ -41,7 +144,7 @@ export default function PerfilAcademicoPage() {
     const frecuenciaPracticas = parseInt(data.frecuencia_practicas_semana, 10);
     const horasPractica = parseFloat(data.horas_practica);
 
-    if (isNaN(anio) || anio < 1 || anio > 6) {
+    if (isNaN(anio) || anio < 1 || anio > 5) {
       setError('anio', { message: 'Año inválido' });
       return;
     }
@@ -69,6 +172,7 @@ export default function PerfilAcademicoPage() {
 
     const { error: academicError } = await supabase.from('academic_data').upsert({
       user_id: user.id,
+      unidad_academica: data.unidad_academica,
       carrera: data.carrera,
       anio,
       deporte: data.deporte,
@@ -97,6 +201,13 @@ export default function PerfilAcademicoPage() {
     router.refresh();
   };
 
+  const carrerasDisponibles =
+    selectedUnidad && selectedUnidad in CARRERAS_POR_UNIDAD
+      ? CARRERAS_POR_UNIDAD[selectedUnidad as UnidadAcademica]
+      : [];
+
+  const posicionesDisponibles = selectedDeporte ? (POSICIONES_POR_DEPORTE[selectedDeporte] ?? []) : [];
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
       <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl">
@@ -108,36 +219,63 @@ export default function PerfilAcademicoPage() {
             <span className="text-sm text-gray-500">Fase 2 de 3</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Datos Académicos y Deportivos</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Completa tu perfil deportivo en la UCC.
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Completa tu perfil deportivo en la UCC.</p>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input
+          {/* Unidad Académica */}
+          <Select
+            id="unidad_academica"
+            label="Unidad Académica"
+            error={errors.unidad_academica?.message}
+            options={[
+              { value: '', label: 'Selecciona tu unidad académica' },
+              ...UNIDADES_ACADEMICAS.map((u) => ({ value: u, label: u })),
+            ]}
+            {...register('unidad_academica', {
+              onChange: (e) => {
+                setSelectedUnidad(e.target.value as UnidadAcademica | '');
+                setValue('carrera', '');
+              },
+            })}
+          />
+
+          {/* Carrera (depends on Unidad Académica) */}
+          <Select
             id="carrera"
             label="Carrera"
-            placeholder="Educación Física"
             error={errors.carrera?.message}
+            disabled={carrerasDisponibles.length === 0}
+            options={[
+              {
+                value: '',
+                label:
+                  carrerasDisponibles.length === 0
+                    ? 'Primero selecciona una unidad académica'
+                    : 'Selecciona tu carrera',
+              },
+              ...carrerasDisponibles.map((c) => ({ value: c, label: c })),
+            ]}
             {...register('carrera')}
           />
 
+          {/* Año de cursada */}
           <Select
             id="anio"
-            label="Año en curso"
+            label="Año de cursada"
             error={errors.anio?.message}
             options={[
               { value: '', label: 'Selecciona el año' },
-              { value: 1, label: '1° año' },
-              { value: 2, label: '2° año' },
-              { value: 3, label: '3° año' },
-              { value: 4, label: '4° año' },
-              { value: 5, label: '5° año' },
-              { value: 6, label: '6° año' },
+              { value: '1', label: '1° Año' },
+              { value: '2', label: '2° Año' },
+              { value: '3', label: '3° Año' },
+              { value: '4', label: '4° Año' },
+              { value: '5', label: '5° Año' },
             ]}
             {...register('anio')}
           />
 
+          {/* Deporte */}
           <Select
             id="deporte"
             label="Deporte"
@@ -147,42 +285,79 @@ export default function PerfilAcademicoPage() {
               { value: 'hockey', label: 'Hockey' },
               { value: 'basquet', label: 'Básquet' },
             ]}
-            {...register('deporte')}
+            {...register('deporte', {
+              onChange: (e) => {
+                setSelectedDeporte(e.target.value);
+                setValue('posicion', '');
+              },
+            })}
           />
 
-          <Input
+          {/* Posición (depends on sport) */}
+          <Select
             id="posicion"
             label="Posición en el equipo"
-            placeholder="ej. Defensa, Alero, Pivote..."
             error={errors.posicion?.message}
+            disabled={posicionesDisponibles.length === 0}
+            options={[
+              {
+                value: '',
+                label:
+                  posicionesDisponibles.length === 0
+                    ? 'Primero selecciona un deporte'
+                    : 'Selecciona tu posición',
+              },
+              ...posicionesDisponibles.map((p) => ({ value: p, label: p })),
+            ]}
             {...register('posicion')}
           />
 
+          {/* Prácticas y horas */}
           <div className="grid grid-cols-2 gap-3">
-            <Input
+            <Select
               id="frecuencia_practicas_semana"
               label="Prácticas por semana"
-              type="number"
-              placeholder="3"
               error={errors.frecuencia_practicas_semana?.message}
+              options={[
+                { value: '', label: 'Selecciona' },
+                { value: '1', label: '1 día' },
+                { value: '2', label: '2 días' },
+                { value: '3', label: '3 días' },
+                { value: '4', label: '4 días' },
+                { value: '5', label: '5 días' },
+                { value: '6', label: '6 días' },
+                { value: '7', label: '7 días' },
+              ]}
               {...register('frecuencia_practicas_semana')}
             />
-            <Input
+            <Select
               id="horas_practica"
               label="Horas por práctica"
-              type="number"
-              step="0.5"
-              placeholder="1.5"
               error={errors.horas_practica?.message}
+              options={[
+                { value: '', label: 'Selecciona' },
+                { value: '0.5', label: '0.5 h' },
+                { value: '1', label: '1 h' },
+                { value: '1.5', label: '1.5 h' },
+                { value: '2', label: '2 h' },
+                { value: '2.5', label: '2.5 h' },
+                { value: '3', label: '3 h' },
+                { value: '3.5', label: '3.5 h' },
+                { value: '4', label: '4 h' },
+              ]}
               {...register('horas_practica')}
             />
           </div>
 
-          <Input
+          {/* Frecuencia de competencias */}
+          <Select
             id="frecuencia_competencias"
             label="Frecuencia de competencias"
-            placeholder="ej. 1 vez por semana, cada 2 semanas..."
             error={errors.frecuencia_competencias?.message}
+            options={[
+              { value: '', label: 'Selecciona la frecuencia' },
+              ...FRECUENCIA_COMPETENCIAS_OPTIONS.map((f) => ({ value: f, label: f })),
+            ]}
             {...register('frecuencia_competencias')}
           />
 
@@ -198,3 +373,4 @@ export default function PerfilAcademicoPage() {
     </main>
   );
 }
+
