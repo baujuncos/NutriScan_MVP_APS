@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { determineRoleFromEmail } from '@/lib/roles';
+import { extractNombreApellido } from '@/lib/roles';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  // 'role' is passed via redirectTo for investigators using Google OAuth
+  const roleParam = searchParams.get('role');
   const next = searchParams.get('next') ?? '/';
 
   if (code) {
@@ -17,7 +19,6 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // Ensure profile exists (for Google OAuth new users)
         try {
           const { data: existingProfile, error: selectError } = await supabase
             .from('profiles')
@@ -26,29 +27,55 @@ export async function GET(request: NextRequest) {
             .maybeSingle();
 
           if (selectError) {
-            console.error("Error al buscar perfil:", selectError.message);
+            console.error('Error al buscar perfil:', selectError.message);
           }
 
-        if (!existingProfile) {
-          const role = determineRoleFromEmail(user.email ?? '');
-          const metaNombre = user.user_metadata?.full_name ?? '';
-          const parts = metaNombre.split(' ');
-          const nombre = parts[0] ?? '';
-          const apellido = parts.slice(1).join(' ') ?? '';
+          if (!existingProfile) {
+            const email = user.email ?? '';
+            const isUCC = email.toLowerCase().endsWith('@ucc.edu.ar');
+            const { nombre, apellido } = extractNombreApellido(
+              user.user_metadata as Record<string, unknown>,
+            );
 
-          await supabase.from('profiles').insert({
-            user_id: user.id,
-            nombre,
-            apellido,
-            email: user.email ?? '',
-            role,
-            physical_completed: false,
-            academic_completed: false,
-            psychological_completed: false,
-          });
-        }
-                } catch (e) {
-          console.error("Error crítico en el callback:", e);
+            if (roleParam === 'investigador') {
+              // Investigador confirmed via Google OAuth or email link with role in URL
+              await supabase.from('profiles').insert({
+                user_id: user.id,
+                nombre,
+                apellido,
+                email,
+                role: 'investigador',
+                physical_completed: false,
+                academic_completed: false,
+                psychological_completed: false,
+              });
+            } else if (isUCC) {
+              // UCC users need to choose their usage before the profile is created.
+              // Redirect them to the usage-selection screen.
+              const forwardedHost = request.headers.get('x-forwarded-host');
+              const isLocalEnv = process.env.NODE_ENV === 'development';
+              const base = isLocalEnv
+                ? origin
+                : forwardedHost
+                  ? `https://${forwardedHost}`
+                  : origin;
+              return NextResponse.redirect(`${base}/elegir-uso`);
+            } else {
+              // Non-UCC users are always 'particular'
+              await supabase.from('profiles').insert({
+                user_id: user.id,
+                nombre,
+                apellido,
+                email,
+                role: 'particular',
+                physical_completed: false,
+                academic_completed: false,
+                psychological_completed: false,
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Error crítico en el callback:', e);
         }
       }
 
