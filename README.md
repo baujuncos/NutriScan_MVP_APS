@@ -56,6 +56,13 @@ En el Dashboard de Supabase → Authentication → Providers → Google:
 - Habilita Google OAuth
 - Agrega `http://localhost:3000/auth/callback` como redirect URL autorizada
 
+### *. Arreglo Sofi
+En sql editor de supabase correr:
+
+```
+supabase/002_newtablepolicies_sofi.sql
+```
+
 ### 4. Desarrollo local
 
 ```bash

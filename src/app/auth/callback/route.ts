@@ -18,11 +18,16 @@ export async function GET(request: NextRequest) {
 
       if (user) {
         // Ensure profile exists (for Google OAuth new users)
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('id, role')
-          .eq('user_id', user.id)
-          .single();
+        try {
+          const { data: existingProfile, error: selectError } = await supabase
+            .from('profiles')
+            .select('id, role')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (selectError) {
+            console.error("Error al buscar perfil:", selectError.message);
+          }
 
         if (!existingProfile) {
           const role = determineRoleFromEmail(user.email ?? '');
@@ -41,6 +46,9 @@ export async function GET(request: NextRequest) {
             academic_completed: false,
             psychological_completed: false,
           });
+        }
+                } catch (e) {
+          console.error("Error crítico en el callback:", e);
         }
       }
 
