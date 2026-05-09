@@ -73,7 +73,10 @@ export async function proxy(request: NextRequest) {
       const onboardingRedirect = getOnboardingRedirect(profile);
   const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica', '/elegir-uso'];
       const isOnboardingRoute = onboardingPaths.some((p) => pathname.startsWith(p));
-      const isMainRoute = pathname.startsWith('/home') || pathname.startsWith('/dashboard');
+      const isMainRoute =
+        pathname.startsWith('/home') ||
+        pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/alimentacion');
 
       if (onboardingRedirect && isMainRoute) {
         return NextResponse.redirect(new URL(onboardingRedirect, request.url));

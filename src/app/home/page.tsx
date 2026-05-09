@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
+import Link from 'next/link';
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -59,6 +60,12 @@ export default async function HomePage() {
             ¡Hola, {profile.nombre}! 👋
           </h2>
           <p className="mt-1 opacity-90">Tu plan nutricional para hoy</p>
+          <Link
+            href="/alimentacion"
+            className="mt-4 inline-block rounded-lg bg-white px-4 py-2 text-sm font-semibold text-green-700 transition-colors hover:bg-green-50"
+          >
+            Registrar alimentación diaria
+          </Link>
         </div>
 
         {physicalData ? (
@@ -179,4 +186,3 @@ function getActividadLabel(factor: number): string {
   if (factor === 1.725) return 'Intenso';
   return String(factor);
 }
-
