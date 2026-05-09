@@ -6,7 +6,7 @@ import BuscadorAlimentos from '@/components/alimentos/BuscadorAlimentos';
 import ListaItems from '@/components/ingestas/ListaItems';
 import ResumenMacros from '@/components/ingestas/ResumenMacros';
 import BottomNav from '@/components/navigation/BottomNav';
-import { MOMENTOS, toIsoDate } from '@/lib/ingestas';
+import { formatOneDecimal, MOMENTOS, toIsoDate } from '@/lib/ingestas';
 
 interface IngestaActual {
   id_ingesta: number;
@@ -91,7 +91,7 @@ export default function ComidasPage() {
           <div className="mt-1 flex items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">{momento.label}</h1>
             <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-sm font-medium">
-              <Flame className="h-4 w-4" /> {ingestaActual?.kcal_total ?? 0} kcal
+              <Flame className="h-4 w-4" /> {formatOneDecimal(ingestaActual?.kcal_total ?? 0)} kcal
             </span>
           </div>
         </header>

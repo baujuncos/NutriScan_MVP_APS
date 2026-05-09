@@ -7,7 +7,10 @@ const paramsSchema = z.object({
   itemId: z.coerce.number().int().positive(),
 });
 
-export async function DELETE(_: NextRequest, context: { params: Promise<{ id: string; itemId: string }> }) {
+export async function DELETE(
+  _request: NextRequest,
+  context: { params: Promise<{ id: string; itemId: string }> },
+) {
   const auth = await getAuthenticatedUser();
   if (auth.unauthorized) return auth.unauthorized;
 

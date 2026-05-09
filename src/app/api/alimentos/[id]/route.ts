@@ -4,7 +4,7 @@ import { getAuthenticatedUser } from '@/lib/api-auth';
 
 const paramsSchema = z.object({ id: z.coerce.number().int().positive() });
 
-export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await getAuthenticatedUser();
   if (auth.unauthorized) return auth.unauthorized;
 

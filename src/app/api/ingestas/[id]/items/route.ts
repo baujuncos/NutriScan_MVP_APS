@@ -11,7 +11,7 @@ const postBodySchema = z.object({
   tipo_item: z.enum(TIPOS_ITEM),
 });
 
-export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await getAuthenticatedUser();
   if (auth.unauthorized) return auth.unauthorized;
 

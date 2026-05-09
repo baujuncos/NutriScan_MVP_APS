@@ -26,8 +26,10 @@ def get_supabase_client() -> Client:
 def load_foods() -> tuple[list[dict[str, object]], Counter[str]]:
     df = pd.read_csv(CSV_PATH, encoding='utf-8-sig', header=None)
 
-    if df.shape[1] < 6:
-        raise RuntimeError(f'CSV inválido: se esperaban al menos 6 columnas, llegaron {df.shape[1]}.')
+    if df.shape[1] not in (6, 7):
+        raise RuntimeError(
+            f'CSV inválido: se esperaban 6 columnas (sin ID) o 7 columnas (con ID), llegaron {df.shape[1]}.'
+        )
 
     # Si el CSV incluye una columna ID al inicio, se ignora automáticamente
     # usando siempre las 6 columnas nutricionales finales.
