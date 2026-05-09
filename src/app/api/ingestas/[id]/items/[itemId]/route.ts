@@ -20,12 +20,26 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
 
   const { id, itemId } = parsedParams.data;
 
+  const { data: ingesta, error: ingestaError } = await auth.supabase
+    .from('ingestas')
+    .select('id_ingesta')
+    .eq('id_ingesta', id)
+    .eq('id_usuario', auth.user.id)
+    .maybeSingle();
+
+  if (ingestaError) {
+    return NextResponse.json({ error: ingestaError.message }, { status: 500 });
+  }
+
+  if (!ingesta) {
+    return NextResponse.json({ error: 'Ingesta no encontrada' }, { status: 404 });
+  }
+
   const { data: item, error: itemError } = await auth.supabase
     .from('items')
-    .select('id_item, id_ingesta, ingestas!inner(id_usuario)')
+    .select('id_item')
     .eq('id_item', itemId)
     .eq('id_ingesta', id)
-    .eq('ingestas.id_usuario', auth.user.id)
     .maybeSingle();
 
   if (itemError) {

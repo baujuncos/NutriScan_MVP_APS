@@ -52,7 +52,7 @@ BEGIN
       FROM public.items WHERE id_ingesta = COALESCE(NEW.id_ingesta, OLD.id_ingesta)
     ), 0)
   WHERE id_ingesta = COALESCE(NEW.id_ingesta, OLD.id_ingesta);
-  RETURN NEW;
+  RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
 

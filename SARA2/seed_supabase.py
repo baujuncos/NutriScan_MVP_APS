@@ -26,16 +26,13 @@ def get_supabase_client() -> Client:
 def load_foods() -> tuple[list[dict[str, object]], Counter[str]]:
     df = pd.read_csv(CSV_PATH, encoding='utf-8-sig', header=None)
 
-    if df.shape[1] < 7:
-        raise RuntimeError(f'CSV inválido: se esperaban al menos 7 columnas, llegaron {df.shape[1]}.')
+    if df.shape[1] < 6:
+        raise RuntimeError(f'CSV inválido: se esperaban al menos 6 columnas, llegaron {df.shape[1]}.')
 
-    start = 0
-    if df.shape[1] >= 8:
-        start = df.shape[1] - 7
-
-    subset = df.iloc[:, start : start + 7].copy()
+    # Si el CSV incluye una columna ID al inicio, se ignora automáticamente
+    # usando siempre las 6 columnas nutricionales finales.
+    subset = df.iloc[:, -6:].copy()
     subset.columns = [
-        'id_alimento',
         'nombre',
         'categoria',
         'kcal_100g',

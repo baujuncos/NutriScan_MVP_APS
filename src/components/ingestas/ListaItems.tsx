@@ -54,13 +54,7 @@ export default function ListaItems({
   const eliminarItem = async (itemId: number) => {
     const response = await fetch(`/api/ingestas/${id_ingesta}/items/${itemId}`, { method: 'DELETE' });
     if (!response.ok) return;
-    setLoading(true);
-    const reloaded = await fetch(`/api/ingestas/${id_ingesta}/items`);
-    if (reloaded.ok) {
-      const json = (await reloaded.json()) as { data: ItemListado[] };
-      setItems(json.data ?? []);
-    }
-    setLoading(false);
+    setItems((prev) => prev.filter((item) => item.id_item !== itemId));
     onCambio();
   };
 
