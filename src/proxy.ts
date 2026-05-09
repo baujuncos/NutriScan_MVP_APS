@@ -31,7 +31,9 @@ export async function proxy(request: NextRequest) {
 
   // Public routes - accessible without auth
   const publicRoutes = ['/', '/login', '/register', '/auth/callback'];
-  const isPublicRoute = publicRoutes.some((r) => pathname === r || pathname.startsWith('/auth/'));
+  const isPublicRoute = 
+    publicRoutes.some((r) => pathname === r || pathname.startsWith('/auth/')) ||
+    pathname.startsWith('/api/'); // Allow all /api/* routes
 
   if (!user && !isPublicRoute) {
     return NextResponse.redirect(new URL('/login', request.url));
@@ -69,7 +71,7 @@ export async function proxy(request: NextRequest) {
 
     if (profile) {
       const onboardingRedirect = getOnboardingRedirect(profile);
-      const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica'];
+  const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica', '/elegir-uso'];
       const isOnboardingRoute = onboardingPaths.some((p) => pathname.startsWith(p));
       const isMainRoute = pathname.startsWith('/home') || pathname.startsWith('/dashboard');
 
