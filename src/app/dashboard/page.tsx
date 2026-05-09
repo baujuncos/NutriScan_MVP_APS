@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   if (!profile) redirect('/login');
 
   if (profile.role !== 'investigador' && profile.role !== 'administrador') {
-    redirect('/home');
+    redirect('/inicio');
   }
 
   // Fetch all users data for investigators
@@ -192,4 +192,3 @@ function RoleBadge({ role }: { role: string }) {
     </span>
   );
 }
-

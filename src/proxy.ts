@@ -57,7 +57,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
     // If no redirect needed (e.g., investigador), send to appropriate destination
-    const dest = profile.role === 'investigador' ? '/dashboard' : '/home';
+    const dest = profile.role === 'investigador' ? '/dashboard' : '/inicio';
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
@@ -73,14 +73,19 @@ export async function proxy(request: NextRequest) {
       const onboardingRedirect = getOnboardingRedirect(profile);
   const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica', '/elegir-uso'];
       const isOnboardingRoute = onboardingPaths.some((p) => pathname.startsWith(p));
-      const isMainRoute = pathname.startsWith('/home') || pathname.startsWith('/dashboard');
+      const isMainRoute =
+        pathname.startsWith('/home') ||
+        pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/inicio') ||
+        pathname.startsWith('/comidas') ||
+        pathname.startsWith('/perfil');
 
       if (onboardingRedirect && isMainRoute) {
         return NextResponse.redirect(new URL(onboardingRedirect, request.url));
       }
 
       if (!onboardingRedirect && isOnboardingRoute) {
-        const dest = profile.role === 'investigador' ? '/dashboard' : '/home';
+        const dest = profile.role === 'investigador' ? '/dashboard' : '/inicio';
         return NextResponse.redirect(new URL(dest, request.url));
       }
     }

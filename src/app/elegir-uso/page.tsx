@@ -36,7 +36,7 @@ export default function ElegirUsoPage() {
         .maybeSingle();
 
       if (profile) {
-        router.replace(profile.physical_completed ? '/home' : '/perfil-fisico');
+        router.replace(profile.physical_completed ? '/inicio' : '/perfil-fisico');
         return;
       }
 

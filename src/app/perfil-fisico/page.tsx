@@ -121,7 +121,7 @@ export default function PerfilFisicoPage() {
     if (profile?.role === 'deportista_ucc') {
       router.push('/perfil-academico');
     } else {
-      router.push('/home');
+      router.push('/inicio');
     }
     router.refresh();
   };

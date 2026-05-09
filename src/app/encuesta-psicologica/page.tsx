@@ -92,7 +92,7 @@ export default function EncuestaPsicologicaPage() {
       return;
     }
 
-    router.push('/home');
+    router.push('/inicio');
     router.refresh();
   };
 
