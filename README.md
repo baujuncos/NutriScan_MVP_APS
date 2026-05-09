@@ -50,6 +50,12 @@ Este script crea:
 - RLS policies para cada tabla
 - Triggers `updated_at`
 
+Para habilitar el registro diario de alimentos, ejecuta también:
+
+```
+supabase/migrations/002_nutrition_tracking.sql
+```
+
 ### 3. Supabase Auth – Google OAuth
 
 En el Dashboard de Supabase → Authentication → Providers → Google:
@@ -87,7 +93,8 @@ POST /api/validate-investigator  → Validación server-side del código
 └── /encuesta-psicologica   → Fase 3: 25 preguntas Likert 0-5 (Solo deportista_ucc)
 
 (Destinos finales)
-├── /home       → Deportistas y Particulares (resumen nutricional)
+├── /home       → Deportistas y Particulares (resumen nutricional + acceso a registro diario)
+├── /alimentacion → Registro diario por ingestas (desayuno/almuerzo/merienda/cena/colación/suplementos)
 └── /dashboard  → Investigadores y Administradores (datos de todos los usuarios)
 ```
 
