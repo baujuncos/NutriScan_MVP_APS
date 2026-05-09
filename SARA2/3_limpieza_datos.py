@@ -13,7 +13,7 @@ def sanitizar_datos_sara():
 
     for archivo in archivos:
         try:
-            # 1. Leer el CSV (usamos latin1 por compatibilidad con SARA)
+            # 1. Leer el CSV (usamos utf8 por compatibilidad con SARA)
             df = pd.read_csv(archivo, header=None, encoding='utf-8')
 
             # --- PARTE A: Limpiar Columna 1 (Nombres) ---
@@ -28,10 +28,20 @@ def sanitizar_datos_sara():
             # --- PARTE B: Normalizar Decimales (Columnas 3, 4 y 5 -> índices 2, 3, 4) ---
             columnas_decimales = [2, 3, 4]
             
+            import re
             for col in columnas_decimales:
                 if col < len(df.columns):
-                    # Reemplazamos coma por punto y nos aseguramos de que sea string para evitar errores
-                    df[col] = df[col].apply(lambda x: str(x).replace(',', '.') if pd.notnull(x) else x)
+                    def normalizar_numero(valor):
+                        if pd.isnull(valor):
+                            return valor
+                        s = str(valor)
+                        # Detectar número entre comillas dobles
+                        match = re.fullmatch(r'"([0-9]+,[0-9]+|[0-9]+)"', s)
+                        if match:
+                            s = match.group(1)
+                        s = s.replace(',', '.')
+                        return s
+                    df[col] = df[col].apply(normalizar_numero)
             
 
             # 4. Guardar los cambios

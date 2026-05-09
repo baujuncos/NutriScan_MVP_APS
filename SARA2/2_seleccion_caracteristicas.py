@@ -37,3 +37,14 @@ for archivo_csv in carpeta_macros.glob("*.csv"):
         print(f"✗ Error en {archivo_csv.name}: {e}")
 
 print("\nLimpieza de base de datos completada con éxito.")
+
+# Mover archivo específico a la carpeta Micros
+archivo_a_mover = carpeta_macros / "tabla_19_a_sales_macronutrientes_parte_2.csv"
+carpeta_micros = Path(__file__).parent / "Micros"
+if archivo_a_mover.exists():
+    carpeta_micros.mkdir(exist_ok=True)
+    destino = carpeta_micros / archivo_a_mover.name
+    archivo_a_mover.rename(destino)
+    print(f"Archivo movido a Micros: {archivo_a_mover.name}")
+else:
+    print("El archivo 'tabla_19_a_sales_macronutrientes_parte_2.csv' no se encontró para mover.")

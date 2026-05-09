@@ -90,7 +90,7 @@ for i, table in enumerate(tables):
     # Asignar título por coordenadas
     titulo_detectado = asignar_titulo_a_tabla(titulos, bbox)
 
-    # 🔥 OVERRIDE manual para tablas 56 y 57
+    # OVERRIDE manual para tablas 56 y 57
     if page_number == 74:
         titulo_detectado = "TABLA 5.A: YOGURES, MACRONUTRIENTES"
     if page_number == 75:
