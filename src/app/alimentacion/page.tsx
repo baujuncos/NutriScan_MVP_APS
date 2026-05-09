@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
+import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/server';
-import { addItemAction, deleteItemAction } from './actions';
-import { formatIngestaLabel, INGESTA_TIPOS, ITEM_TIPOS, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
+import { INGESTA_TIPOS, formatIngestaLabel, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
+import AlimentacionClient from './AlimentacionClient';
+
+export const dynamic = 'force-dynamic';
 
 type AlimentoOption = {
   id_alimento: number;
@@ -34,53 +37,60 @@ type IngestaRow = {
   items: ItemRow[] | null;
 };
 
-type PhysicalDataRow = {
-  get_kcal: number | null;
-  proteinas_g: number | null;
-  carbohidratos_g: number | null;
-  grasas_g: number | null;
-};
-
-function toNumber(value: number | string | null | undefined): number {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
+function toNum(v: number | string | null | undefined): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') return parseFloat(v) || 0;
   return 0;
 }
 
-function formatMetric(value: number): string {
-  return value.toFixed(2);
-}
+const MEAL_GRADIENT: Record<IngestaTipo, string> = {
+  desayuno: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
+  almuerzo: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
+  merienda: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
+  cena: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)',
+  colacion: 'linear-gradient(135deg, #db2777 0%, #ec4899 100%)',
+  suplemento: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+};
 
-function getAlimentoNombre(item: ItemRow): string {
-  if (Array.isArray(item.alimentos)) {
-    return item.alimentos[0]?.nombre ?? `Alimento #${item.id_alimento}`;
-  }
-  if (item.alimentos?.nombre) return item.alimentos.nombre;
-  return `Alimento #${item.id_alimento}`;
-}
+const MEAL_COLOR: Record<IngestaTipo, string> = {
+  desayuno: '#f97316',
+  almuerzo: '#16a34a',
+  merienda: '#d97706',
+  cena: '#4f46e5',
+  colacion: '#db2777',
+  suplemento: '#7c3aed',
+};
+
+const MEAL_ICON: Record<IngestaTipo, string> = {
+  desayuno: '☀️',
+  almuerzo: '🍽️',
+  merienda: '🍪',
+  cena: '🌙',
+  colacion: '🍎',
+  suplemento: '💊',
+};
 
 export default async function AlimentacionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string }>;
+  searchParams: Promise<{ fecha?: string; tipo?: string }>;
 }) {
   const params = await searchParams;
   const today = new Date().toISOString().slice(0, 10);
-  const selectedDate = params.fecha && isValidDateInput(params.fecha) ? params.fecha : today;
+  const fecha = params.fecha && isValidDateInput(params.fecha) ? params.fecha : today;
+  const selectedTipo = (
+    params.tipo && INGESTA_TIPOS.includes(params.tipo as IngestaTipo)
+      ? params.tipo
+      : 'desayuno'
+  ) as IngestaTipo;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nombre, apellido, role')
+    .select('nombre, role')
     .eq('user_id', user.id)
     .single();
 
@@ -89,33 +99,14 @@ export default async function AlimentacionPage({
 
   const { data: ingestasData } = await supabase
     .from('ingestas')
-    .select(
-      `
-      id_ingesta,
-      tipo,
-      fecha,
-      kcal_total,
-      proteinas_total_g,
-      grasas_total_g,
-      carbs_total_g,
-      items (
-        id_item,
-        id_alimento,
-        tipo_item,
-        cantidad,
-        kcal,
-        proteinas_g,
-        grasas_g,
-        carbs_g,
-        alimentos (
-          nombre,
-          categoria
-        )
-      )
-    `,
-    )
+    .select(`
+      id_ingesta, tipo, fecha,
+      kcal_total, proteinas_total_g, grasas_total_g, carbs_total_g,
+      items(id_item, id_alimento, tipo_item, cantidad, kcal, proteinas_g, grasas_g, carbs_g,
+        alimentos(nombre, categoria))
+    `)
     .eq('id_usuario', user.id)
-    .eq('fecha', selectedDate);
+    .eq('fecha', fecha);
 
   const { data: alimentosData } = await supabase
     .from('alimentos')
@@ -123,241 +114,135 @@ export default async function AlimentacionPage({
     .order('nombre', { ascending: true })
     .limit(1000);
 
-  const { data: physicalData } = await supabase
-    .from('physical_data')
-    .select('get_kcal, proteinas_g, carbohidratos_g, grasas_g')
-    .eq('user_id', user.id)
-    .single();
-
   const ingestas = (ingestasData ?? []) as IngestaRow[];
   const alimentos = (alimentosData ?? []) as AlimentoOption[];
-  const physical = (physicalData ?? null) as PhysicalDataRow | null;
 
   const ingestaByTipo = new Map<IngestaTipo, IngestaRow>();
-  ingestas.forEach((ingesta) => {
-    ingestaByTipo.set(ingesta.tipo, ingesta);
-  });
+  ingestas.forEach((i) => ingestaByTipo.set(i.tipo, i));
 
-  const totalKcal = ingestas.reduce((acc, ingesta) => acc + toNumber(ingesta.kcal_total), 0);
-  const totalProte = ingestas.reduce((acc, ingesta) => acc + toNumber(ingesta.proteinas_total_g), 0);
-  const totalCarbs = ingestas.reduce((acc, ingesta) => acc + toNumber(ingesta.carbs_total_g), 0);
-  const totalGrasas = ingestas.reduce((acc, ingesta) => acc + toNumber(ingesta.grasas_total_g), 0);
+  const totalKcal = ingestas.reduce((a, i) => a + toNum(i.kcal_total), 0);
+
+  const selectedIngesta = ingestaByTipo.get(selectedTipo) ?? null;
+  const selectedKcal = toNum(selectedIngesta?.kcal_total);
+  const selectedItems = selectedIngesta?.items?.length ?? 0;
+
+  const gradient = MEAL_GRADIENT[selectedTipo];
+  const accentColor = MEAL_COLOR[selectedTipo];
+  const icon = MEAL_ICON[selectedTipo];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-100">
-      <header className="bg-white shadow-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-600">
-              <span className="text-lg">🍽️</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-gray-900">Registro Diario de Alimentación</h1>
-              <p className="text-xs text-gray-500">
-                {profile.nombre} {profile.apellido}
-              </p>
-            </div>
+    <div className="min-h-screen bg-gray-50 pb-24">
+      {/* Top bar */}
+      <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/home"
-              className="rounded-lg border border-green-600 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50"
-            >
-              Volver a Home
-            </Link>
-            <LogoutButton />
-          </div>
+          <span className="font-bold text-gray-900 text-base">NutriScan</span>
         </div>
+        <LogoutButton />
       </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <section className="rounded-2xl bg-white p-6 shadow-sm">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Resumen del día</h2>
-              <p className="text-sm text-gray-500">Registra alimentos y el backend calcula macros por regla de tres.</p>
-            </div>
-            <form className="flex items-end gap-2">
-              <div>
-                <label htmlFor="fecha" className="text-sm font-medium text-gray-700">
-                  Fecha
-                </label>
-                <input
-                  id="fecha"
-                  name="fecha"
-                  type="date"
-                  defaultValue={selectedDate}
-                  className="mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                />
-              </div>
-              <button
-                type="submit"
-                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-              >
-                Ver
-              </button>
-            </form>
+      {/* Meal banner */}
+      <div className="mx-4 mt-4 rounded-2xl text-white p-5" style={{ background: gradient }}>
+        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Registro de comidas</p>
+        <div className="flex items-center justify-between mt-2">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <span>{icon}</span>
+              <span>{formatIngestaLabel(selectedTipo)}</span>
+            </h2>
+            <p className="text-sm text-white/70 mt-0.5">
+              {selectedItems === 0 ? 'Sin registros aún' : `${selectedItems} ítem${selectedItems !== 1 ? 's' : ''} cargado${selectedItems !== 1 ? 's' : ''}`}
+            </p>
           </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MetricCard label="Kcal consumidas" current={totalKcal} target={physical?.get_kcal ?? null} unit="kcal" />
-            <MetricCard label="Proteínas" current={totalProte} target={physical?.proteinas_g ?? null} unit="g" />
-            <MetricCard label="Carbohidratos" current={totalCarbs} target={physical?.carbohidratos_g ?? null} unit="g" />
-            <MetricCard label="Grasas" current={totalGrasas} target={physical?.grasas_g ?? null} unit="g" />
+          <div
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
+            style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
+          >
+            🔥 {Math.round(selectedKcal)} kcal
           </div>
-        </section>
+        </div>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        {/* Daily total sub-line */}
+        {totalKcal > 0 && (
+          <p className="text-xs text-white/60 mt-2">
+            Total del día: {Math.round(totalKcal)} kcal
+          </p>
+        )}
+      </div>
+
+      {/* Meal type tabs */}
+      <div className="overflow-x-auto px-4 py-3">
+        <div className="flex gap-2 min-w-max">
           {INGESTA_TIPOS.map((tipo) => {
-            const ingesta = ingestaByTipo.get(tipo);
-            const items = ingesta?.items ?? [];
-
+            const isActive = tipo === selectedTipo;
+            const hasItems = (ingestaByTipo.get(tipo)?.items?.length ?? 0) > 0;
             return (
-              <article key={tipo} className="rounded-2xl bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">{formatIngestaLabel(tipo)}</h3>
-                  <span className="text-xs text-gray-500">{items.length} ítems</span>
-                </div>
-
-                <form action={addItemAction} className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input type="hidden" name="fecha" value={selectedDate} />
-                  <input type="hidden" name="tipo_ingesta" value={tipo} />
-
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-medium text-gray-700" htmlFor={`id_alimento-${tipo}`}>
-                      Alimento
-                    </label>
-                    <select
-                      id={`id_alimento-${tipo}`}
-                      name="id_alimento"
-                      defaultValue=""
-                      required
-                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
-                    >
-                      <option value="" disabled>
-                        Selecciona un alimento
-                      </option>
-                      {alimentos.map((alimento) => (
-                        <option key={alimento.id_alimento} value={alimento.id_alimento}>
-                          {alimento.nombre}
-                          {alimento.categoria ? ` (${alimento.categoria})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-gray-700" htmlFor={`cantidad-${tipo}`}>
-                      Cantidad
-                    </label>
-                    <input
-                      id={`cantidad-${tipo}`}
-                      name="cantidad"
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      required
-                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                      placeholder="Ej: 120"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-medium text-gray-700" htmlFor={`tipo_item-${tipo}`}>
-                      Tipo de ítem
-                    </label>
-                    <select
-                      id={`tipo_item-${tipo}`}
-                      name="tipo_item"
-                      defaultValue={ITEM_TIPOS[0]}
-                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    >
-                      {ITEM_TIPOS.map((tipoItem) => (
-                        <option key={tipoItem} value={tipoItem}>
-                          {tipoItem}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="sm:col-span-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                  >
-                    Agregar ítem
-                  </button>
-                </form>
-
-                {items.length > 0 ? (
-                  <div className="space-y-2">
-                    {items.map((item) => (
-                      <div key={item.id_item} className="rounded-lg border border-gray-200 p-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{getAlimentoNombre(item)}</p>
-                            <p className="text-xs text-gray-500">
-                              {toNumber(item.cantidad).toFixed(2)} · {item.tipo_item}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-600">
-                              {formatMetric(toNumber(item.kcal))} kcal · P {formatMetric(toNumber(item.proteinas_g))}g
-                              · C {formatMetric(toNumber(item.carbs_g))}g · G {formatMetric(toNumber(item.grasas_g))}g
-                            </p>
-                          </div>
-                          <form action={deleteItemAction}>
-                            <input type="hidden" name="fecha" value={selectedDate} />
-                            <input type="hidden" name="id_item" value={item.id_item} />
-                            <button
-                              type="submit"
-                              className="rounded-md border border-red-300 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                            >
-                              Eliminar
-                            </button>
-                          </form>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">Sin ítems cargados para este momento.</p>
+              <Link
+                key={tipo}
+                href={`/alimentacion?fecha=${fecha}&tipo=${tipo}`}
+                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border"
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: accentColor,
+                        borderColor: accentColor,
+                        color: 'white',
+                      }
+                    : {
+                        backgroundColor: 'white',
+                        borderColor: '#e5e7eb',
+                        color: '#6b7280',
+                      }
+                }
+              >
+                <span className="text-base leading-none">{MEAL_ICON[tipo]}</span>
+                <span>{formatIngestaLabel(tipo)}</span>
+                {hasItems && !isActive && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ backgroundColor: MEAL_COLOR[tipo] }}
+                  />
                 )}
-
-                <div className="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-gray-700">
-                  <p>
-                    Totales: {formatMetric(toNumber(ingesta?.kcal_total))} kcal · P{' '}
-                    {formatMetric(toNumber(ingesta?.proteinas_total_g))}g · C{' '}
-                    {formatMetric(toNumber(ingesta?.carbs_total_g))}g · G{' '}
-                    {formatMetric(toNumber(ingesta?.grasas_total_g))}g
-                  </p>
-                </div>
-              </article>
+              </Link>
             );
           })}
-        </section>
-      </main>
-    </div>
-  );
-}
+        </div>
+      </div>
 
-function MetricCard({
-  label,
-  current,
-  target,
-  unit,
-}: {
-  label: string;
-  current: number;
-  target: number | null;
-  unit: string;
-}) {
-  const hasTarget = target !== null && Number.isFinite(target);
-  return (
-    <div className="rounded-xl border border-green-100 bg-green-50 p-3">
-      <p className="text-xs text-gray-600">{label}</p>
-      <p className="text-xl font-bold text-green-700">{formatMetric(current)}</p>
-      <p className="text-xs text-gray-500">
-        {unit}
-        {hasTarget ? ` / meta ${formatMetric(target)} ${unit}` : ''}
-      </p>
+      {/* Date picker */}
+      <div className="px-4 pb-2">
+        <form className="flex items-center gap-2">
+          <input type="hidden" name="tipo" value={selectedTipo} />
+          <input
+            name="fecha"
+            type="date"
+            defaultValue={fecha}
+            className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          />
+          <button
+            type="submit"
+            className="rounded-xl bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-medium transition-colors"
+          >
+            Ver
+          </button>
+        </form>
+      </div>
+
+      {/* Client component: search + add + items */}
+      <div className="px-4 pt-2 pb-4">
+        <AlimentacionClient
+          alimentos={alimentos}
+          ingesta={selectedIngesta}
+          tipoIngesta={selectedTipo}
+          fecha={fecha}
+        />
+      </div>
+
+      <BottomNav />
     </div>
   );
 }

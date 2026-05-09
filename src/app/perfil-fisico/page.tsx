@@ -127,14 +127,30 @@ export default function PerfilFisicoPage() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <header className="bg-white px-4 py-4 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-900 text-base">NutriScan</span>
+        </div>
+      </header>
+
+    <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-bold text-white">
               1
             </div>
             <span className="text-sm text-gray-500">Fase 1 de 3</span>
+            <div className="flex-1 ml-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-700 rounded-full" style={{ width: '33%' }} />
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Perfil Físico</h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -201,5 +217,6 @@ export default function PerfilFisicoPage() {
         </form>
       </div>
     </main>
+    </div>
   );
 }

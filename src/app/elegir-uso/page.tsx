@@ -96,17 +96,30 @@ export default function ElegirUsoPage() {
 
   if (checkingAuth) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <p className="text-gray-500">Cargando...</p>
+      <main className="flex min-h-screen items-center justify-center bg-gray-50">
+        <p className="text-gray-400 text-sm">Cargando...</p>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <header className="bg-white px-4 py-4 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-900 text-base">NutriScan</span>
+        </div>
+      </header>
+
+      <main className="flex flex-col items-center justify-center px-4 py-12 min-h-[calc(100vh-64px)]">
+      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-600">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
             <span className="text-2xl">🎓</span>
           </div>
           <h2 className="text-2xl font-bold text-gray-900">¿Cómo vas a usar NutriScan?</h2>
@@ -121,7 +134,7 @@ export default function ElegirUsoPage() {
             onClick={() => setSelectedUsage('deportista_ucc')}
             className={`rounded-xl border-2 p-4 text-left transition-all ${
               selectedUsage === 'deportista_ucc'
-                ? 'border-green-500 bg-green-50'
+                ? 'border-blue-600 bg-blue-50'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
@@ -143,7 +156,7 @@ export default function ElegirUsoPage() {
             onClick={() => setSelectedUsage('particular')}
             className={`rounded-xl border-2 p-4 text-left transition-all ${
               selectedUsage === 'particular'
-                ? 'border-green-500 bg-green-50'
+                ? 'border-blue-600 bg-blue-50'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
@@ -174,6 +187,7 @@ export default function ElegirUsoPage() {
           Continuar →
         </Button>
       </div>
-    </main>
+      </main>
+    </div>
   );
 }
