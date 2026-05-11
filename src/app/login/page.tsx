@@ -25,7 +25,7 @@ const registerSchema = z
 type RegisterData = z.infer<typeof registerSchema>;
 type LoginData = z.infer<typeof loginSchema>;
 
-import LogoIcon from '@/components/ui/LogoIcon';
+
 
 function LeftPanel() {
   return (
@@ -38,10 +38,8 @@ function LeftPanel() {
       <div className="absolute -bottom-12 left-1/3 w-56 h-56 rounded-full bg-white/5" />
 
       <div className="flex items-center gap-3 z-10">
-        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-          <LogoIcon />
-        </div>
-        <span className="text-xl font-bold tracking-tight">NutriScan</span>
+        <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10" />
+        <img src="/tituloNutriScan.png" alt="NutriScan" className="h-8" />
       </div>
 
       <div className="z-10 space-y-6">
@@ -389,10 +387,8 @@ export default function LoginPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 sm:px-12 py-12 min-h-screen">
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <div className="w-9 h-9 bg-blue-700 rounded-xl flex items-center justify-center text-white">
-            <LogoIcon />
-          </div>
-          <span className="text-xl font-bold text-gray-900">NutriScan</span>
+          <img src="/logo.png" alt="Logo NutriScan" className="w-9 h-9 rounded-xl bg-blue-700 text-white" />
+          <img src="/tituloNutriScan.png" alt="NutriScan" className="h-7" />
         </div>
 
         <div className="flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
