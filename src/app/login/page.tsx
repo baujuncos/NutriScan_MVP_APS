@@ -21,21 +21,11 @@ const registerSchema = z
     password: z.string().min(6, 'Mínimo 6 caracteres'),
     confirmPassword: z.string(),
   })
-  .refine((d) => d.password === d.confirmPassword, {
-    message: 'Las contraseñas no coinciden',
-    path: ['confirmPassword'],
-  });
 
-type LoginData = z.infer<typeof loginSchema>;
 type RegisterData = z.infer<typeof registerSchema>;
+type LoginData = z.infer<typeof loginSchema>;
 
-function LogoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+import LogoIcon from '@/components/ui/LogoIcon';
 
 function LeftPanel() {
   return (
