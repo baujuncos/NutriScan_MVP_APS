@@ -136,7 +136,7 @@ export default async function AlimentacionPage({
       <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
         <div className="flex items-center gap-2.5">
           <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
-          <img src="/tituloNutriScan.png" alt="NutriScan" className="h-6" />
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
         </div>
         <LogoutButton />
       </header>
