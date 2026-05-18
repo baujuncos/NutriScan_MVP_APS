@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { createClient } from '@supabase/supabase-js';
 
 // Configuración desde variables de entorno
-const resend = new Resend(process.env.RESEND_API_KEY);
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const FROM_EMAIL = 'no-reply@nutriscan.app.resend.dev'; // Remitente Resend sandbox
+// Configuración de Nodemailer para Gmail
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
+// Previo a probar la funcionalidad se debe de corroborar una buena configuración
+// de las variables de entorno y que la tabla profiles tenga datos con roles 'particular'
+// o 'deportista_ucc' y que la tabla ingestas tenga registros con fechas correspondientes a hoy.
+
+const FROM_EMAIL = process.env.GMAIL_USER || '';
 
 // Comidas importantes
 const MAIN_MEALS = ['desayuno', 'almuerzo', 'merienda', 'cena'];
 
-export const runtime = 'edge'; // Para Vercel Edge Functions
+export const runtime = 'nodejs'; // Para Vercel Edge Functions
 
 
 export async function POST(req: NextRequest) {
@@ -23,8 +35,8 @@ export async function POST(req: NextRequest) {
   // Fecha de hoy (zona local Argentina)
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const fecha = today.toISOString().slice(0, 10);
- // const fecha = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+//const fecha = today.toISOString().slice(0, 10);
+  const fecha = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
 
   // 1. Traer usuarios particulares y deportistas
   const { data: users, error: userError } = await supabase
@@ -33,6 +45,7 @@ export async function POST(req: NextRequest) {
     .in('role', ['particular', 'deportista_ucc']);
 
   if (userError) {
+    console.log('User error:', userError);
     return NextResponse.json({ error: 'Error consultando usuarios', details: userError }, { status: 500 });
   }
 
@@ -41,6 +54,8 @@ export async function POST(req: NextRequest) {
     .from('ingestas')
     .select('id_usuario, tipo')
     .eq('fecha', fecha);
+
+
 
   if (ingestasError) {
     return NextResponse.json({ error: 'Error consultando ingestas', details: ingestasError }, { status: 500 });
@@ -74,7 +89,7 @@ export async function POST(req: NextRequest) {
       <a href="https://nutriscan.vercel.app/">Ingresar a NutriScan</a>
       <br><br>Equipo NutriScan</p>`;
       try {
-        await resend.emails.send({
+        await transporter.sendMail({
           from: FROM_EMAIL,
           to: email,
           subject: 'Recordatorio: registrá tus comidas en NutriScan',
@@ -82,10 +97,16 @@ export async function POST(req: NextRequest) {
         });
         return { email, status: 'sent' };
       } catch (e) {
+        console.error('Error enviando mail:', e);
         return { email, status: 'error', error: e };
       }
     })
   );
+  
+  console.log('Fecha usada:', fecha);
+  console.log('Usuarios:', users);
+  console.log('Ingestas:', ingestas);
+  console.log('Reminders:', reminders);
 
-  return NextResponse.json({ sent: results.length, results });
+  return NextResponse.json({ sent: results.length, results });  
 }

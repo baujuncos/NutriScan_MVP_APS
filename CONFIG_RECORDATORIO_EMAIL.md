@@ -1,26 +1,29 @@
-# Configuración de recordatorio automático por email con Resend y Supabase en Vercel
 
-Este instructivo te guía para que el recordatorio diario de comidas funcione correctamente en tu proyecto NutriScan desplegado en Vercel.
+# Configuración de recordatorio automático por email con Nodemailer y Gmail
+
+Este instructivo te guía para que el recordatorio diario de comidas funcione correctamente en tu proyecto NutriScan usando Nodemailer y una cuenta de Gmail personal.
 
 ---
 
 ## 1. Variables de entorno necesarias
 
-Debes agregar estas variables en tu proyecto de Vercel:
+Debes agregar estas variables en tu proyecto (local o en Vercel):
 
-| Nombre                        | Descripción                                      |
-|-------------------------------|--------------------------------------------------|
-| RESEND_API_KEY                | API Key de tu cuenta Resend                      |
-| NEXT_PUBLIC_SUPABASE_URL      | URL de tu proyecto Supabase                      |
-| SUPABASE_SERVICE_ROLE_KEY     | Service Role Key de Supabase (NO la anon key)    |
+| Nombre                | Descripción                                 |
+|-----------------------|---------------------------------------------|
+| GMAIL_USER            | Dirección de Gmail que enviará los mails    |
+| GMAIL_PASS            | Contraseña de aplicación de Gmail           |
+| NEXT_PUBLIC_SUPABASE_URL | URL de tu proyecto Supabase              |
+| SUPABASE_SERVICE_ROLE_KEY | Service Role Key de Supabase            |
 
 **¿Dónde encontrarlas?**
-- **RESEND_API_KEY:** Entra a https://resend.com/api-keys y copia tu clave.
+- **GMAIL_USER:** Tu dirección de Gmail (ej: tunombre@gmail.com)
+- **GMAIL_PASS:** Debe ser una "contraseña de aplicación" generada en https://myaccount.google.com/apppasswords (no tu contraseña normal)
 - **NEXT_PUBLIC_SUPABASE_URL:** En el panel de Supabase, sección API, campo "Project URL".
 - **SUPABASE_SERVICE_ROLE_KEY:** En el panel de Supabase, sección API, campo "Service Role Key".
 
 **Cómo agregarlas:**
-1. Ve a tu proyecto en https://vercel.com/dashboard
+1. Ve a tu proyecto en https://vercel.com/dashboard (o tu entorno local)
 2. Settings > Environment Variables
 3. Agrega cada variable con su valor correspondiente.
 
@@ -45,9 +48,12 @@ Puedes hacer un POST a `/api/send-reminders` desde Postman, curl o tu navegador 
 
 ## 4. Notas importantes
 
-- El remitente de los mails será `no-reply@nutriscan.app.resend.dev` (sandbox de Resend, funciona sin dominio propio).
-- El endpoint `/api/send-reminders` ya está listo para producción y envía mails solo a usuarios "particular" y "deportista_ucc" que no hayan registrado todas las comidas principales del día.
+- El remitente de los mails será tu cuenta de Gmail configurada en `GMAIL_USER`.
+- Debes usar una contraseña de aplicación de Gmail, no tu contraseña normal.
+- Si tienes 2FA en tu cuenta de Google, es obligatorio usar contraseña de aplicación.
+- El endpoint `/api/send-reminders` envía mails solo a usuarios "particular" y "deportista_ucc" que no hayan registrado todas las comidas principales del día.
 - Si necesitas cambiar el horario, ajusta el campo **Schedule** en el cron job.
+- No compartas tu contraseña de aplicación ni la subas al repositorio.
 
 ---
 
