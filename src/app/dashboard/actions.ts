@@ -45,9 +45,7 @@ type IngestaRow = {
   grasas_total_g: number;
   carbs_total_g: number;
 };
-type HidraRegistroRow = { id_usuario: string; fecha: string; tipo: string; ml: number };
-type HidraByTipo = { agua: number; jugo: number; gaseosa: number; infusion: number; leche: number; otro: number };
-type MacroTuple = { kcal: number; prot: number; grasas: number; carbs: number };
+type HidratacionRow = { id_usuario: string; fecha: string; ml_total: number };
 
 const ROLE_LABELS: Record<string, string> = {
   investigador: 'Investigador',
@@ -55,29 +53,6 @@ const ROLE_LABELS: Record<string, string> = {
   particular: 'Particular',
   administrador: 'Administrador',
 };
-
-const MEAL_TYPES = ['desayuno', 'almuerzo', 'merienda', 'cena', 'colacion', 'suplemento'] as const;
-const MEAL_LABELS: Record<string, string> = {
-  desayuno: 'DESAYUNO', almuerzo: 'ALMUERZO', merienda: 'MERIENDA',
-  cena: 'CENA', colacion: 'COLACIÓN', suplemento: 'SUPLEMENTO',
-};
-const EMPTY_MACRO: MacroTuple = { kcal: 0, prot: 0, grasas: 0, carbs: 0 };
-const EMPTY_HIDRA: HidraByTipo = { agua: 0, jugo: 0, gaseosa: 0, infusion: 0, leche: 0, otro: 0 };
-
-// Column layout:
-// 1-6   DATOS DEL USUARIO
-// 7-16  PERFIL FÍSICO
-// 17-23 PERFIL ACADÉMICO / DEPORTIVO
-// 24-25 ENCUESTA PSICOLÓGICA
-// 26    FECHA
-// 27-30 DESAYUNO  (kcal, prot, grasas, carbs)
-// 31-34 ALMUERZO
-// 35-38 MERIENDA
-// 39-42 CENA
-// 43-46 COLACIÓN
-// 47-50 SUPLEMENTO
-// 51-56 HIDRATACIÓN (agua, jugo, gaseosa, infusion, leche, otro)
-const TOTAL_COLS = 56;
 
 export async function generateExcelAction(
   userIds: string[]
@@ -101,7 +76,7 @@ export async function generateExcelAction(
     supabase.from('academic_data').select('user_id, carrera, anio, deporte, posicion, frecuencia_practicas_semana, horas_practica, frecuencia_competencias').in('user_id', userIds),
     supabase.from('psychological_surveys').select('user_id, completed_at').in('user_id', userIds),
     supabase.from('ingestas').select('id_ingesta, id_usuario, tipo, fecha, kcal_total, proteinas_total_g, grasas_total_g, carbs_total_g').in('id_usuario', userIds).order('fecha', { ascending: true }),
-    supabase.from('hidratacion_registros').select('id_usuario, fecha, tipo, ml').in('id_usuario', userIds).order('fecha', { ascending: true }),
+    supabase.from('hidratacion').select('id_usuario, fecha, ml_total').in('id_usuario', userIds),
   ]);
 
   const profiles = (profilesRes.data ?? []) as ProfileRow[];
@@ -109,50 +84,29 @@ export async function generateExcelAction(
   const acadMap = new Map(((acadRes.data ?? []) as AcademicRow[]).map((a) => [a.user_id, a]));
   const survMap = new Map(((survRes.data ?? []) as SurveyRow[]).map((s) => [s.user_id, s]));
 
-  // userId → fecha → tipoIngesta → MacroTuple
-  const ingeByUser = new Map<string, Map<string, Map<string, MacroTuple>>>();
+  const ingeMap = new Map<string, IngestaRow[]>();
   for (const ing of (ingeRes.data ?? []) as IngestaRow[]) {
-    if (!ingeByUser.has(ing.id_usuario)) ingeByUser.set(ing.id_usuario, new Map());
-    const byDate = ingeByUser.get(ing.id_usuario)!;
-    if (!byDate.has(ing.fecha)) byDate.set(ing.fecha, new Map());
-    byDate.get(ing.fecha)!.set(ing.tipo, {
-      kcal: Number(ing.kcal_total) || 0,
-      prot: Number(ing.proteinas_total_g) || 0,
-      grasas: Number(ing.grasas_total_g) || 0,
-      carbs: Number(ing.carbs_total_g) || 0,
-    });
+    const list = ingeMap.get(ing.id_usuario) ?? [];
+    list.push(ing);
+    ingeMap.set(ing.id_usuario, list);
+  }
+  const hidraMap = new Map<string, number>();
+  for (const h of (hidraRes.data ?? []) as HidratacionRow[]) {
+    hidraMap.set(`${h.id_usuario}_${h.fecha}`, h.ml_total);
   }
 
-  // userId_fecha → HidraByTipo
-  const hidraMap = new Map<string, HidraByTipo>();
-  for (const h of (hidraRes.data ?? []) as HidraRegistroRow[]) {
-    const key = `${h.id_usuario}_${h.fecha}`;
-    const rec = hidraMap.get(key) ?? { ...EMPTY_HIDRA };
-    if (h.tipo in rec) rec[h.tipo as keyof HidraByTipo] += h.ml;
-    hidraMap.set(key, rec);
-  }
-
-  // Union of all dates per user (ingestas + hidratación)
-  const datesByUser = new Map<string, Set<string>>();
-  for (const ing of (ingeRes.data ?? []) as IngestaRow[]) {
-    if (!datesByUser.has(ing.id_usuario)) datesByUser.set(ing.id_usuario, new Set());
-    datesByUser.get(ing.id_usuario)!.add(ing.fecha);
-  }
-  for (const h of (hidraRes.data ?? []) as HidraRegistroRow[]) {
-    if (!datesByUser.has(h.id_usuario)) datesByUser.set(h.id_usuario, new Set());
-    datesByUser.get(h.id_usuario)!.add(h.fecha);
-  }
-
-  // ── Build workbook ──────────────────────────────────────────────────────
+  // ── Build workbook ────────────────────────────────────────────────────
   const wb = new ExcelJS.Workbook();
   wb.creator = 'NutriScan';
 
   const ws = wb.addWorksheet('NutriScan Informe', {
-    views: [{ state: 'frozen', ySplit: 5 }],
+    views: [{ state: 'frozen', ySplit: 4 }],
     properties: { defaultRowHeight: 18 },
   });
 
-  // ── Row 1: Title ────────────────────────────────────────────────────────
+  const TOTAL_COLS = 32;
+
+  // Row 1 — Title
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
   const r1 = ws.getRow(1);
   r1.height = 36;
@@ -162,7 +116,7 @@ export async function generateExcelAction(
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A3A5C' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  // ── Row 2: Subtitle ─────────────────────────────────────────────────────
+  // Row 2 — Subtitle
   ws.mergeCells(2, 1, 2, TOTAL_COLS);
   const r2 = ws.getRow(2);
   r2.height = 20;
@@ -172,15 +126,14 @@ export async function generateExcelAction(
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F6FF' } };
   subCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  // ── Row 3: Section headers ───────────────────────────────────────────────
+  // Row 3 — Section headers
   const SECTIONS = [
-    { label: 'DATOS DEL USUARIO',            start: 1,  end: 6,  argb: 'FF1D4ED8' },
-    { label: 'PERFIL FÍSICO',                start: 7,  end: 16, argb: 'FF047857' },
-    { label: 'PERFIL ACADÉMICO / DEPORTIVO', start: 17, end: 23, argb: 'FF6D28D9' },
-    { label: 'ENCUESTA PSICOLÓGICA',         start: 24, end: 25, argb: 'FFB91C1C' },
-    { label: 'FECHA',                        start: 26, end: 26, argb: 'FF374151' },
-    { label: 'REGISTRO ALIMENTARIO',         start: 27, end: 50, argb: 'FFD97706' },
-    { label: 'HIDRATACIÓN (ml por tipo)',     start: 51, end: 56, argb: 'FF0891B2' },
+    { label: 'DATOS DEL USUARIO',             start: 1,  end: 6,  argb: 'FF1D4ED8' },
+    { label: 'PERFIL FÍSICO',                 start: 7,  end: 16, argb: 'FF047857' },
+    { label: 'PERFIL ACADÉMICO / DEPORTIVO',  start: 17, end: 23, argb: 'FF6D28D9' },
+    { label: 'ENCUESTA PSICOLÓGICA',          start: 24, end: 25, argb: 'FFB91C1C' },
+    { label: 'REGISTRO ALIMENTARIO',          start: 26, end: 31, argb: 'FFD97706' },
+    { label: 'HIDRATACIÓN',                   start: 32, end: 32, argb: 'FF0891B2' },
   ];
 
   const r3 = ws.getRow(3);
@@ -194,194 +147,105 @@ export async function generateExcelAction(
     c.alignment = { horizontal: 'center', vertical: 'middle' };
   }
 
-  // ── Row 4: Meal sub-headers ──────────────────────────────────────────────
-  const r4 = ws.getRow(4);
-  r4.height = 16;
-
-  // Style fixed sections with a slightly lighter shade
-  const SECTION4_FILLS: [number, number, string][] = [
-    [1, 6, 'FF1E40AF'], [7, 16, 'FF065F46'], [17, 23, 'FF5B21B6'],
-    [24, 25, 'FF991B1B'], [26, 26, 'FF1F2937'], [51, 56, 'FF0E7490'],
-  ];
-  for (const [start, end, argb] of SECTION4_FILLS) {
-    for (let col = start; col <= end; col++) {
-      const c = r4.getCell(col);
-      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
-    }
-  }
-
-  // Meal sub-headers spanning 4 cols each (cols 27-50)
-  MEAL_TYPES.forEach((meal, idx) => {
-    const startCol = 27 + idx * 4;
-    const endCol = startCol + 3;
-    ws.mergeCells(4, startCol, 4, endCol);
-    const c = r4.getCell(startCol);
-    c.value = MEAL_LABELS[meal];
-    c.font = { bold: true, size: 8, color: { argb: 'FFFFFFFF' }, name: 'Calibri' };
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } };
-    c.alignment = { horizontal: 'center', vertical: 'middle' };
-  });
-
-  // ── Row 5: Column headers ────────────────────────────────────────────────
-  const mealMacroCols = MEAL_TYPES.flatMap(() => ['Kcal', 'Prot (g)', 'Grasas (g)', 'Carbs (g)']);
+  // Row 4 — Column headers
   const COL_HEADERS = [
     'ID Usuario', 'Nombre', 'Apellido', 'Email', 'Rol', 'Fecha Registro',
     'Peso (kg)', 'Altura (cm)', 'Fecha Nac.', 'Sexo', 'Factor Act.', 'TMB', 'GET (kcal)', 'Meta Prot. (g)', 'Meta Carbs (g)', 'Meta Grasas (g)',
     'Carrera', 'Año', 'Deporte', 'Posición', 'Prácticas/sem', 'Hs Práctica', 'Freq. Competencia',
-    'Completada', 'Fecha Encuesta',
-    'Fecha',
-    ...mealMacroCols,
-    'Agua (ml)', 'Jugo (ml)', 'Gaseosa (ml)', 'Infusión/Té (ml)', 'Leche (ml)', 'Otro (ml)',
+    'Encuesta', 'Fecha Encuesta',
+    'Fecha Ingesta', 'Tipo Ingesta', 'Kcal', 'Proteínas (g)', 'Grasas (g)', 'Carbs (g)',
+    'Agua (ml)',
   ];
 
-  const COL_HEADER_COLORS = [
+  const COL_SECTION_COLOR = [
     ...Array(6).fill('FF1D4ED8'),
     ...Array(10).fill('FF047857'),
     ...Array(7).fill('FF6D28D9'),
     ...Array(2).fill('FFB91C1C'),
-    'FF374151',
-    ...Array(24).fill('FFD97706'),
-    ...Array(6).fill('FF0891B2'),
+    ...Array(6).fill('FFD97706'),
+    'FF0891B2',
   ];
 
-  const r5 = ws.getRow(5);
-  r5.height = 30;
+  const r4 = ws.getRow(4);
+  r4.height = 30;
   COL_HEADERS.forEach((h, i) => {
-    const c = r5.getCell(i + 1);
+    const c = r4.getCell(i + 1);
     c.value = h;
     c.font = { bold: true, size: 8, color: { argb: 'FFFFFFFF' }, name: 'Calibri' };
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COL_HEADER_COLORS[i] } };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COL_SECTION_COLOR[i] } };
     c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     c.border = { right: { style: 'thin', color: { argb: 'FF00000030' } } };
   });
 
-  // ── Data rows ────────────────────────────────────────────────────────────
-  let ri = 6;
-  // Columns 1-25 are "static" per user (profile, physical, academic, survey)
-  const STATIC_COLS = 25;
-
-  const applyCell = (
-    row: ExcelJS.Row,
-    colIdx: number,
-    val: ExcelJS.CellValue,
-    bg: string,
-  ) => {
-    const c = row.getCell(colIdx);
-    c.value = val;
-    c.font = { size: 9, name: 'Calibri' };
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-    c.alignment = { vertical: 'middle' };
-    c.border = {
-      right: { style: 'hair', color: { argb: 'FFD1D5DB' } },
-      bottom: { style: 'hair', color: { argb: 'FFD1D5DB' } },
-    };
-  };
-
+  // Data rows
+  let ri = 5;
   for (const p of profiles) {
     const phys = physMap.get(p.user_id);
     const acad = acadMap.get(p.user_id);
     const surv = survMap.get(p.user_id);
+    const ingestas = ingeMap.get(p.user_id) ?? [];
 
-    const staticVals: ExcelJS.CellValue[] = [
-      // usuario (6)
+    const profileVals: ExcelJS.CellValue[] = [
       p.user_id, p.nombre, p.apellido, p.email,
       ROLE_LABELS[p.role] ?? p.role,
       p.created_at?.slice(0, 10) ?? '',
-      // físico (10)
+    ];
+    const physVals: ExcelJS.CellValue[] = [
       phys?.peso_kg ?? '', phys?.altura_cm ?? '', phys?.fecha_nacimiento ?? '',
       phys?.sexo ?? '', phys?.factor_actividad ?? '', phys?.tmb ?? '',
       phys?.get_kcal ?? '', phys?.proteinas_g ?? '',
       phys?.carbohidratos_g ?? '', phys?.grasas_g ?? '',
-      // académico (7)
+    ];
+    const acadVals: ExcelJS.CellValue[] = [
       acad?.carrera ?? '', acad?.anio ?? '', acad?.deporte ?? '',
       acad?.posicion ?? '', acad?.frecuencia_practicas_semana ?? '',
       acad?.horas_practica ?? '', acad?.frecuencia_competencias ?? '',
-      // encuesta (2)
+    ];
+    const survVals: ExcelJS.CellValue[] = [
       surv ? 'Sí' : 'No',
       surv?.completed_at?.slice(0, 10) ?? '',
     ];
 
-    const dates = [...(datesByUser.get(p.user_id) ?? new Set())].sort();
-    const blockStart = ri;
-    const blockSize = Math.max(1, dates.length);
-
-    const writeDateRow = (fecha: string, bg: string) => {
+    const writeRow = (ingeVals: ExcelJS.CellValue[], agua: ExcelJS.CellValue) => {
       const row = ws.getRow(ri);
       row.height = 16;
-
-      // Static cols: only write on first row of block; rest left blank (merged later)
-      if (ri === blockStart) {
-        staticVals.forEach((val, i) => applyCell(row, i + 1, val, bg));
-      }
-
-      // Fecha
-      applyCell(row, 26, fecha, bg);
-
-      // Meals
-      const byTipo = fecha ? ingeByUser.get(p.user_id)?.get(fecha) : undefined;
-      MEAL_TYPES.forEach((meal, mIdx) => {
-        const base = 27 + mIdx * 4;
-        const m = byTipo?.get(meal);
-        if (m) {
-          applyCell(row, base,     m.kcal,  bg);
-          applyCell(row, base + 1, m.prot,  bg);
-          applyCell(row, base + 2, m.grasas, bg);
-          applyCell(row, base + 3, m.carbs, bg);
-        } else {
-          for (let c = base; c < base + 4; c++) applyCell(row, c, '', bg);
-        }
+      const bg = ri % 2 === 0 ? 'FFF8FAFC' : 'FFFFFFFF';
+      const allVals = [...profileVals, ...physVals, ...acadVals, ...survVals, ...ingeVals, agua];
+      allVals.forEach((val, i) => {
+        const c = row.getCell(i + 1);
+        c.value = val;
+        c.font = { size: 9, name: 'Calibri' };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        c.alignment = { vertical: 'middle' };
+        c.border = {
+          right: { style: 'hair', color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'hair', color: { argb: 'FFD1D5DB' } },
+        };
       });
-
-      // Hydration
-      const h = fecha ? (hidraMap.get(`${p.user_id}_${fecha}`) ?? EMPTY_HIDRA) : EMPTY_HIDRA;
-      const hidraVals: ExcelJS.CellValue[] = [
-        h.agua || '', h.jugo || '', h.gaseosa || '',
-        h.infusion || '', h.leche || '', h.otro || '',
-      ];
-      hidraVals.forEach((val, i) => applyCell(row, 51 + i, val, bg));
-
       ri++;
     };
 
-    // Alternate user block background: even users get tinted rows
-    const userBg = (blockStart % 2 === 0) ? 'FFF8FAFC' : 'FFFFFFFF';
-
-    if (dates.length === 0) {
-      writeDateRow('', userBg);
+    if (ingestas.length === 0) {
+      writeRow(['', '', '', '', '', ''], '');
     } else {
-      for (const fecha of dates) {
-        writeDateRow(fecha, userBg);
-      }
-    }
-
-    // Merge static cols vertically for this user block
-    if (blockSize > 1) {
-      const blockEnd = blockStart + blockSize - 1;
-      for (let col = 1; col <= STATIC_COLS; col++) {
-        ws.mergeCells(blockStart, col, blockEnd, col);
-        const cell = ws.getCell(blockStart, col);
-        cell.alignment = { vertical: 'middle', wrapText: false };
-      }
-      // Add a visible separator border at the bottom of each user block
-      for (let col = 1; col <= TOTAL_COLS; col++) {
-        const cell = ws.getCell(blockStart + blockSize - 1, col);
-        cell.border = {
-          ...cell.border,
-          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
-        };
+      for (const ing of ingestas) {
+        const agua = hidraMap.get(`${p.user_id}_${ing.fecha}`) ?? '';
+        writeRow([
+          ing.fecha, ing.tipo,
+          ing.kcal_total, ing.proteinas_total_g, ing.grasas_total_g, ing.carbs_total_g,
+        ], agua);
       }
     }
   }
 
-  // ── Column widths ─────────────────────────────────────────────────────────
+  // Column widths
   const COL_WIDTHS = [
-    34, 13, 13, 28, 14, 13,           // usuario
-    9, 9, 13, 6, 11, 7, 11, 14, 14, 13, // físico
-    22, 5, 12, 12, 12, 11, 18,         // académico
-    10, 13,                             // encuesta
-    13,                                 // fecha
-    ...Array(24).fill(9) as number[],  // comidas (6 × 4 macros)
-    10, 10, 12, 14, 10, 10,            // hidratación
+    34, 13, 13, 28, 14, 13,
+    9,  9,  13, 6,  11, 7, 11, 14, 14, 13,
+    22, 5,  12, 12, 12, 11, 18,
+    10, 13,
+    13, 13, 8, 13, 11, 11,
+    10,
   ];
   COL_WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
