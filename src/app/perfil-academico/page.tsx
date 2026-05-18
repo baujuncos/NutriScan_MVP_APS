@@ -174,7 +174,6 @@ export default function PerfilAcademicoPage() {
 
     const { error: academicError } = await supabase.from('academic_data').upsert({
       user_id: user.id,
-      unidad_academica: data.unidad_academica,
       carrera: data.carrera,
       anio,
       deporte: data.deporte,
