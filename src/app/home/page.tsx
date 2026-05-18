@@ -4,7 +4,6 @@ import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { type IngestaTipo } from '@/lib/nutrition';
-import HidratacionCard from './HidratacionCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,15 +70,6 @@ export default async function HomePage() {
     `)
     .eq('id_usuario', user.id)
     .eq('fecha', today);
-
-  const { data: hidratacionData } = await supabase
-    .from('hidratacion')
-    .select('ml_total')
-    .eq('id_usuario', user.id)
-    .eq('fecha', today)
-    .single();
-
-  const mlHoy = hidratacionData?.ml_total ?? 0;
 
   const ingestas = (ingestasData ?? []) as IngestaRow[];
 
@@ -224,9 +214,6 @@ export default async function HomePage() {
             })}
           </div>
         </div>
-
-        {/* Hydration */}
-        <HidratacionCard initialMl={mlHoy} />
 
         {/* Recent meals */}
         {recentIngestas.length > 0 && (

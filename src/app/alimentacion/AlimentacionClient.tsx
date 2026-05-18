@@ -82,7 +82,7 @@ export default function AlimentacionClient({
 
   const filtered =
     query.length >= 2
-      ? alimentos.filter((a) => a.nombre.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
+      ? alimentos.filter((a) => a.nombre.toLowerCase().includes(query.toLowerCase())).slice(0, 80)
       : [];
 
   const handleSelectAlimento = (a: AlimentoOption) => {
