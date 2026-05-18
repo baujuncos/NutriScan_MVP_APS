@@ -4,6 +4,7 @@ import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { type IngestaTipo } from '@/lib/nutrition';
+import HidratacionCard from './HidratacionCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,15 @@ export default async function HomePage() {
     .eq('id_usuario', user.id)
     .eq('fecha', today);
 
+  const { data: hidratacionData } = await supabase
+    .from('hidratacion')
+    .select('ml_total')
+    .eq('id_usuario', user.id)
+    .eq('fecha', today)
+    .single();
+
+  const mlHoy = hidratacionData?.ml_total ?? 0;
+
   const ingestas = (ingestasData ?? []) as IngestaRow[];
 
   const totalKcal = ingestas.reduce((a, i) => a + toNum(i.kcal_total), 0);
@@ -103,8 +113,12 @@ export default async function HomePage() {
     <div className="min-h-screen bg-gray-50 pb-24">
       <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
-          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
+          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className="font-bold text-gray-900 text-base">NutriScan</span>
         </div>
         <LogoutButton />
       </header>
@@ -214,6 +228,9 @@ export default async function HomePage() {
             })}
           </div>
         </div>
+
+        {/* Hydration */}
+        <HidratacionCard initialMl={mlHoy} />
 
         {/* Recent meals */}
         {recentIngestas.length > 0 && (
