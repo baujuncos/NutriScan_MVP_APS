@@ -80,19 +80,22 @@ export async function POST(req: NextRequest) {
     .filter(Boolean) as { email: string; nombre: string; faltantes: string[] }[];
 
   // 4. Enviar mails en paralelo
+  // Fijarse de colocar el link correcto de deployeo
+  
   const results = await Promise.all(
     reminders.map(async ({ email, nombre, faltantes }) => {
-      const html = `<p>Hola ${nombre || ''},<br><br>
-      Notamos que hoy no registraste todas tus comidas principales en NutriScan.<br>
-      Te faltó cargar: <b>${faltantes.map((f) => f.charAt(0).toUpperCase() + f.slice(1)).join(', ')}</b>.<br><br>
-      ¡Recordá que un registro completo ayuda a tu salud y a la investigación!<br><br>
-      <a href="https://nutriscan.vercel.app/">Ingresar a NutriScan</a>
-      <br><br>Equipo NutriScan</p>`;
+      const html = `
+  <p>Hola ${nombre || ''},</p>
+  <p>Este es un recordatorio para que registres tus comidas principales de hoy en NutriScan.</p>
+  <p>Te falta cargar: ${faltantes.map(f => f.charAt(0).toUpperCase() + f.slice(1)).join(', ')}.</p>
+  <p>Accedé a la app aquí: <a href="https://nutri-scan-mvp-aps-git-feat-recordato-4adcdd-baujuncos-projects.vercel.app/login">NutriScan</a></p>
+  <p>Saludos,<br>Equipo NutriScan</p>
+`;
       try {
         await transporter.sendMail({
           from: FROM_EMAIL,
           to: email,
-          subject: 'Recordatorio: registrá tus comidas en NutriScan',
+          subject: 'Recordatorio diario de comidas',
           html,
         });
         return { email, status: 'sent' };
