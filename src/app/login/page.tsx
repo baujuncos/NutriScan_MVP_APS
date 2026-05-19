@@ -57,15 +57,16 @@ function LeftPanel() {
             <span className="text-green-400">ciencia.</span>
           </h1>
           <p className="mt-5 text-white/65 text-base leading-relaxed max-w-sm">
-            Registrá comidas, hidratación y valoración psicológica. Investigadores acceden a datos estructurados para análisis científico.
+            Registrá comidas e hidratación usando la base de datos nacional SARA2. <br />
+            ¡Profesionales usarán los datos recolectados en un proyecto de investigación para conocerte mejor!
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3 pt-2">
           {[
-            { value: '120+', label: 'Deportistas' },
-            { value: '8.4k', label: 'Comidas registradas' },
-            { value: '6', label: 'Equipos UCC' },
+            { value: '50+', label: 'Deportistas' },
+            { value: '900+', label: 'Alimentos disponibles' },
+            { value: '2', label: 'Equipos UCC' },
           ].map((s) => (
             <div key={s.label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center min-w-[80px]">
               <p className="text-lg font-bold">{s.value}</p>
@@ -136,7 +137,6 @@ function LoginForm() {
     <div className="w-full max-w-sm">
       <div className="mb-7">
         <h2 className="text-2xl font-bold text-gray-900">Bienvenido de vuelta</h2>
-        <p className="text-sm text-gray-500 mt-1">Ingresá con tu credencial UCC</p>
       </div>
 
       <button
@@ -154,19 +154,19 @@ function LoginForm() {
           <span className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-xs text-gray-400">
-          <span className="bg-white px-2">o con tu email</span>
+          <span className="bg-white px-2">o con tu mail</span>
         </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
           <label htmlFor="login-email" className="block text-sm font-medium text-gray-700 mb-1.5">
-            Legajo / Email UCC
+            Mail
           </label>
           <input
             id="login-email"
             type="email"
-            placeholder="legajo@ucc.edu.ar"
+            placeholder="juanperez@hotmail.com"
             {...register('email')}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
@@ -422,12 +422,15 @@ export default function LoginPage() {
           <RegisterFormInline onSuccess={() => setEmailSent(true)} />
         )}
 
-        <p className="mt-8 text-xs text-gray-400">
-          ¿Investigador?{' '}
-          <Link href="/register?type=investigador" className="text-blue-600 hover:underline">
-            Registrarse con código de acceso
-          </Link>
-        </p>
+        {/* MODIFICACIÓN: Renderizado condicional para mostrar solo en 'register' */}
+        {tab === 'register' && (
+          <p className="mt-8 text-xs text-gray-400">
+            ¿Investigador?{' '}
+            <Link href="/register?type=investigador" className="text-blue-600 hover:underline">
+              Registrarse con código de acceso
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   );
