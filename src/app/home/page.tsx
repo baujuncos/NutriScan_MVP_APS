@@ -111,16 +111,13 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center text-white">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span className="font-bold text-gray-900 text-base">NutriScan</span>
-        </div>
-        <LogoutButton />
+      {/* Top bar */}
+            <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
+                <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
+              </div>
+              <LogoutButton />
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto space-y-5">
