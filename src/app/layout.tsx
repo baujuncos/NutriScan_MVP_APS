@@ -4,7 +4,7 @@ import "./globals.css";
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: "NutriScan – Plataforma Nutricional",
+  title: "NutriScan",
   description: "Tu plataforma nutricional inteligente para deportistas y particulares.",
 };
 
@@ -15,6 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full antialiased">
+      <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
+      </head>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );

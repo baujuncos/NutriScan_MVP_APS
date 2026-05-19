@@ -174,7 +174,6 @@ export default function PerfilAcademicoPage() {
 
     const { error: academicError } = await supabase.from('academic_data').upsert({
       user_id: user.id,
-      unidad_academica: data.unidad_academica,
       carrera: data.carrera,
       anio,
       deporte: data.deporte,
@@ -211,14 +210,26 @@ export default function PerfilAcademicoPage() {
   const posicionesDisponibles = selectedDeporte ? (POSICIONES_POR_DEPORTE[selectedDeporte] ?? []) : [];
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-xl">
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <header className="bg-white px-4 py-4 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
+        </div>
+      </header>
+
+    <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-600 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-bold text-white">
               2
             </div>
             <span className="text-sm text-gray-500">Fase 2 de 3</span>
+            <div className="flex-1 ml-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-700 rounded-full" style={{ width: '66%' }} />
+            </div>
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Datos Académicos y Deportivos</h2>
           <p className="mt-1 text-sm text-gray-500">Completa tu perfil deportivo en la UCC.</p>
@@ -373,6 +384,7 @@ export default function PerfilAcademicoPage() {
         </form>
       </div>
     </main>
+    </div>
   );
 }
 

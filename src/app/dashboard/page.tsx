@@ -53,13 +53,9 @@ export default async function DashboardPage() {
       <header className="bg-white shadow-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600">
-              <span className="text-lg">🔬</span>
-            </div>
-            <div>
-              <h1 className="font-bold text-gray-900">NutriScan – Dashboard</h1>
-              <p className="text-xs text-gray-500">Panel de Investigador</p>
-            </div>
+            <img src="/logo.png" alt="Logo NutriScan" className="h-10 w-10" />
+            <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-8" />
+            <span className="text-xs text-gray-500 ml-2">Panel de Investigador</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-600">
