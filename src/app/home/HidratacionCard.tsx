@@ -1,240 +1,223 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { addHidratacionRegistro, deleteHidratacionRegistro, type TipoLiquido } from './actions';
+import { updateHidratacion } from './actions';
 
 const META_ML = 2500;
 const GLASS_ML = 250;
 const TOTAL_GLASSES = META_ML / GLASS_ML; // 10
 
-const TIPO_OPTIONS: { value: TipoLiquido; label: string; emoji: string }[] = [
-  { value: 'agua',     label: 'Agua',         emoji: '💧' },
-  { value: 'jugo',     label: 'Jugo',         emoji: '🥤' },
-  { value: 'gaseosa',  label: 'Gaseosa',      emoji: '🫧' },
-  { value: 'infusion', label: 'Infusión / Té', emoji: '🍵' },
-  { value: 'leche',    label: 'Leche',        emoji: '🥛' },
-  { value: 'otro',     label: 'Otro',         emoji: '🫙'  },
-];
+function formatVasos(ml: number): string {
+  if (ml === 0) return '0 vasos';
+  const ratio = ml / GLASS_ML;
+  const whole = Math.floor(ratio);
+  const frac = ratio - whole;
 
-type Registro = { id: number; tipo: TipoLiquido; ml: number };
+  const fracs: { val: number; str: string }[] = [
+    { val: 0,    str: ''    },
+    { val: 1/4,  str: '1/4' },
+    { val: 1/3,  str: '1/3' },
+    { val: 1/2,  str: '1/2' },
+    { val: 2/3,  str: '2/3' },
+    { val: 3/4,  str: '3/4' },
+  ];
 
-export default function HidratacionCard({
-  registros: initialRegistros,
-  mlDeComidas,
-}: {
-  registros: Registro[];
-  mlDeComidas: Record<TipoLiquido, number>;
-}) {
-  const [registros, setRegistros] = useState<Registro[]>(initialRegistros);
-  const [tipo, setTipo] = useState<TipoLiquido>('agua');
+  let nearest = fracs[0];
+  let minDiff = Math.abs(frac - fracs[0].val);
+  for (const f of fracs) {
+    const diff = Math.abs(frac - f.val);
+    if (diff < minDiff) { minDiff = diff; nearest = f; }
+  }
+
+  const fracStr = nearest.str;
+
+  if (!fracStr) return whole === 1 ? '1 vaso' : `${whole} vasos`;
+  if (whole === 0) return `${fracStr} vaso`;
+  return `${whole} y ${fracStr} vasos`;
+}
+
+export default function HidratacionCard({ initialMl }: { initialMl: number }) {
+  const [ml, setMl] = useState(initialMl);
   const [pending, startTransition] = useTransition();
+  const [manualInput, setManualInput] = useState('');
+  const [manualError, setManualError] = useState('');
+  const [editTotal, setEditTotal] = useState(false);
+  const [editInput, setEditInput] = useState('');
 
-  const mlAguaRegistros = registros.filter((r) => r.tipo === 'agua').reduce((s, r) => s + r.ml, 0);
-  const mlAgua = mlAguaRegistros + mlDeComidas.agua;
-  const mlTotal = registros.reduce((s, r) => s + r.ml, 0) + Object.values(mlDeComidas).reduce((s, v) => s + v, 0);
-  const glasses = Math.floor(mlAgua / GLASS_ML);
+  function handle(delta: number) {
+    const optimistic = Math.max(0, ml + delta);
+    setMl(optimistic);
+    startTransition(async () => {
+      const result = await updateHidratacion(delta);
+      if ('ml' in result) setMl(result.ml);
+    });
+  }
+
+  function handleManual() {
+    const value = parseInt(manualInput, 10);
+    if (isNaN(value) || value <= 0) {
+      setManualError('Ingresá un número mayor a 0');
+      return;
+    }
+    if (value > 5000) {
+      setManualError('Máximo 5000 ml');
+      return;
+    }
+    setManualError('');
+    setManualInput('');
+    handle(value);
+  }
+
+  function startEdit() {
+    setEditInput(String(ml));
+    setEditTotal(true);
+  }
+
+  function confirmEdit() {
+    const value = parseInt(editInput, 10);
+    setEditTotal(false);
+    if (isNaN(value) || value < 0) return;
+    const clamped = Math.min(value, 10000);
+    const delta = clamped - ml;
+    if (delta !== 0) handle(delta);
+  }
+
+  const glasses = Math.floor(ml / GLASS_ML);
   const filledSegments = Math.min(TOTAL_GLASSES, glasses);
-
-  function handleAdd(ml: number) {
-    const tempId = -(Date.now());
-    setRegistros((prev) => [...prev, { id: tempId, tipo, ml }]);
-    startTransition(async () => {
-      const result = await addHidratacionRegistro(tipo, ml);
-      if ('error' in result) {
-        setRegistros((prev) => prev.filter((r) => r.id !== tempId));
-      } else {
-        setRegistros((prev) =>
-          prev.map((r) => (r.id === tempId ? { ...r, id: result.id } : r))
-        );
-      }
-    });
-  }
-
-  function handleDelete(id: number) {
-    setRegistros((prev) => prev.filter((r) => r.id !== id));
-    startTransition(async () => {
-      await deleteHidratacionRegistro(id);
-    });
-  }
-
-  const vasosDelTipo = Math.round(
-    registros.filter((r) => r.tipo === tipo).reduce((s, r) => s + r.ml, 0) / GLASS_ML
-  );
-
-  function handleRemove() {
-    const last = [...registros].reverse().find((r) => r.tipo === tipo);
-    if (last) handleDelete(last.id);
-  }
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-            <svg width="14" height="16" viewBox="0 0 14 16" fill="#3b82f6">
+      {/* Header row */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+            <svg width="17" height="20" viewBox="0 0 14 16" fill="#3b82f6">
               <path d="M7 0 C7 0 0 7 0 11 C0 14.31 3.13 16 7 16 C10.87 16 14 14.31 14 11 C14 7 7 0 7 0 Z" />
             </svg>
           </div>
-          <h2 className="font-semibold text-gray-900">Hidratación</h2>
+          <div>
+            <p className="font-semibold text-gray-900 leading-tight">Hidratación</p>
+
+            {editTotal ? (
+              <div className="flex items-center gap-1 mt-0.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={10000}
+                  value={editInput}
+                  onChange={(e) => setEditInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') confirmEdit();
+                    if (e.key === 'Escape') setEditTotal(false);
+                  }}
+                  autoFocus
+                  className="w-20 py-0.5 px-2 text-sm border border-blue-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 text-gray-700"
+                />
+                <span className="text-xs text-gray-400">ml</span>
+                <button
+                  onClick={confirmEdit}
+                  className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-white ml-0.5"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setEditTotal(false)}
+                  className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-gray-500"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm text-gray-400">
+                  {ml} ml · {formatVasos(ml)}
+                </p>
+                <button
+                  onClick={startEdit}
+                  disabled={pending}
+                  title="Editar total"
+                  className="text-gray-300 hover:text-blue-400 disabled:opacity-40 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <span className="text-sm text-gray-400">{Math.floor(mlAgua / GLASS_ML)}/{TOTAL_GLASSES} vasos de agua</span>
+
+        {/* Counter controls */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => handle(-GLASS_ML)}
+            disabled={pending || ml === 0 || editTotal}
+            className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-lg leading-none hover:bg-gray-200 disabled:opacity-40 transition-colors"
+          >
+            −
+          </button>
+          <div className="flex flex-col items-center w-8">
+            <span className="text-xl font-bold text-gray-900 tabular-nums leading-none">{glasses}</span>
+            <span className="text-[10px] text-gray-400 mt-0.5">{glasses === 1 ? 'vaso' : 'vasos'}</span>
+          </div>
+          <button
+            onClick={() => handle(GLASS_ML)}
+            disabled={pending || editTotal}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xl leading-none disabled:opacity-60 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)' }}
+          >
+            +
+          </button>
+        </div>
       </div>
 
-      {/* Segmented progress */}
-      <div className="flex gap-1.5 mb-2">
+      {/* Segmented progress bar */}
+      <div className="flex gap-1.5 mt-4">
         {Array.from({ length: TOTAL_GLASSES }).map((_, i) => (
           <div
             key={i}
             className="flex-1 h-2 rounded-full transition-all duration-300"
             style={{
-              background:
-                i < filledSegments
-                  ? 'linear-gradient(90deg, #60a5fa, #3b82f6)'
-                  : '#e5e7eb',
+              background: i < filledSegments
+                ? 'linear-gradient(90deg, #60a5fa, #3b82f6)'
+                : '#e5e7eb',
             }}
           />
         ))}
       </div>
 
-      <div className="flex justify-between items-center mb-4">
-        <span className="text-sm font-semibold text-blue-600">{mlAgua} ml de agua</span>
-        <span className="text-xs text-gray-400">
-          meta: {META_ML} ml · {Math.min(100, Math.round((mlAgua / META_ML) * 100))}%
-          {mlTotal > mlAgua && (
-            <span className="text-gray-300"> · {mlTotal} ml totales</span>
-          )}
-        </span>
-      </div>
-
-      {/* Type selector + add buttons */}
-      <div className="flex items-center gap-2 mb-3">
-        <select
-          value={tipo}
-          onChange={(e) => setTipo(e.target.value as TipoLiquido)}
-          disabled={pending}
-          className="flex-1 py-2 px-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white text-gray-700 disabled:opacity-50"
-        >
-          {TIPO_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.emoji} {o.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleRemove}
-          disabled={pending || vasosDelTipo === 0}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 text-lg font-bold disabled:opacity-40 transition-opacity hover:bg-gray-200"
-        >
-          −
-        </button>
-        <span className="w-6 text-center text-sm font-semibold text-gray-800">{vasosDelTipo}</span>
-        <button
-          onClick={() => handleAdd(GLASS_ML)}
-          disabled={pending}
-          className="w-9 h-9 flex items-center justify-center rounded-full text-white text-lg font-bold disabled:opacity-60 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, #60a5fa, #3b82f6)' }}
-        >
-          +
-        </button>
-      </div>
-
-      {/* 1 vaso reference */}
-      <p className="text-xs text-gray-400 text-right mb-3 -mt-1">1 vaso = 250 ml</p>
-
-      {/* Per-type summary list */}
-      <div className="space-y-1.5">
-        {TIPO_OPTIONS.map((opt) => {
-          const t = opt.value as TipoLiquido;
-          const tipoMlRegistros = registros
-            .filter((r) => r.tipo === t)
-            .reduce((s, r) => s + r.ml, 0);
-          const tipoMlComidas = mlDeComidas[t] ?? 0;
-          const tipoMlTotal = tipoMlRegistros + tipoMlComidas;
-          const tipoVasos = Math.round(tipoMlTotal / GLASS_ML);
-          const hasManual = tipoMlRegistros > 0;
-          const hasAny = tipoMlTotal > 0;
-          const isSelected = tipo === t;
-
-          return (
-            <div
-              key={opt.value}
-              className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${
-                hasAny
-                  ? isSelected
-                    ? 'bg-blue-50 border border-blue-200'
-                    : 'bg-gray-50'
-                  : 'bg-gray-50 opacity-40'
-              }`}
-            >
-              <span className="text-xs text-gray-700 font-medium">
-                {opt.emoji} {opt.label}
-              </span>
-
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <span className="text-xs text-gray-500">
-                    {tipoVasos} {tipoVasos === 1 ? 'vaso' : 'vasos'} · {tipoMlTotal} ml
-                  </span>
-                  {tipoMlComidas > 0 && (
-                    <span className="block text-[10px] text-blue-400">
-                      🍽 +{tipoMlComidas} ml de comidas
-                    </span>
-                  )}
-                </div>
-
-                {hasManual && (
-                  <div className="flex items-center gap-1 ml-1">
-                    <button
-                      onClick={() => {
-                        const last = [...registros].reverse().find((r) => r.tipo === t);
-                        if (last) handleDelete(last.id);
-                      }}
-                      disabled={pending}
-                      className="w-5 h-5 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 text-xs font-bold disabled:opacity-40 hover:bg-gray-300 transition-colors"
-                    >
-                      −
-                    </button>
-                    <button
-                      onClick={() => {
-                        const tempId = -(Date.now());
-                        setRegistros((prev) => [...prev, { id: tempId, tipo: t, ml: GLASS_ML }]);
-                        startTransition(async () => {
-                          const result = await addHidratacionRegistro(t, GLASS_ML);
-                          if ('error' in result) {
-                            setRegistros((prev) => prev.filter((r) => r.id !== tempId));
-                          } else {
-                            setRegistros((prev) =>
-                              prev.map((r) => (r.id === tempId ? { ...r, id: result.id } : r))
-                            );
-                          }
-                        });
-                      }}
-                      disabled={pending}
-                      className="w-5 h-5 flex items-center justify-center rounded-full text-white text-xs font-bold disabled:opacity-60 transition-colors"
-                      style={{ background: 'linear-gradient(135deg, #60a5fa, #3b82f6)' }}
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Liquids from meals total banner */}
-      {Object.values(mlDeComidas).some((v) => v > 0) && (
-        <div className="flex items-center gap-1.5 mt-3 px-3 py-2 bg-blue-50 rounded-xl">
-          <svg width="12" height="12" viewBox="0 0 14 16" fill="#60a5fa">
-            <path d="M7 0 C7 0 0 7 0 11 C0 14.31 3.13 16 7 16 C10.87 16 14 14.31 14 11 C14 7 7 0 7 0 Z" />
-          </svg>
-          <span className="text-xs text-blue-600">
-            +{Object.values(mlDeComidas).reduce((s, v) => s + v, 0)} ml incluidos desde comidas del día
-          </span>
+      {/* Reference + manual input */}
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <p className="text-xs text-gray-400 mb-2">1 vaso = 250 ml</p>
+        <div className="flex gap-2">
+          <input
+            type="number"
+            min={1}
+            max={5000}
+            value={manualInput}
+            onChange={(e) => { setManualInput(e.target.value); setManualError(''); }}
+            onKeyDown={(e) => e.key === 'Enter' && handleManual()}
+            placeholder="Ingresar ml exactos"
+            disabled={pending || editTotal}
+            className="flex-1 py-2 px-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white text-gray-700 placeholder-gray-400 disabled:opacity-50"
+          />
+          <button
+            onClick={handleManual}
+            disabled={pending || manualInput === '' || editTotal}
+            className="px-4 py-2 text-sm font-semibold rounded-xl text-white disabled:opacity-50 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)' }}
+          >
+            Agregar
+          </button>
         </div>
-      )}
+        {manualError && (
+          <p className="text-xs text-red-400 mt-1">{manualError}</p>
+        )}
+      </div>
     </div>
   );
 }

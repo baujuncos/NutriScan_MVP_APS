@@ -4,27 +4,15 @@ import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { type IngestaTipo } from '@/lib/nutrition';
+import { todayAR } from '@/lib/date';
 import HidratacionCard from './HidratacionCard';
-import type { TipoLiquido } from './actions';
 
 export const dynamic = 'force-dynamic';
 
 type ItemSnippet = {
   id_item: number;
   kcal: number | string;
-  tipo_item: string;
-  cantidad: number | string;
-  alimentos: { nombre: string; categoria: string } | Array<{ nombre: string; categoria: string }> | null;
-};
-
-const CATEGORIA_A_TIPO: Record<string, TipoLiquido> = {
-  'infusiones':                         'infusion',
-  'leche y postres de leche':           'leche',
-  'yogures':                            'leche',
-  'bebidas con azúcar':                 'jugo',
-  'bebidas sin azúcar':                 'jugo',
-  'bebidas alcohólicas y energizantes': 'otro',
-  'caldos y sopas industriales':        'otro',
+  alimentos: { nombre: string } | Array<{ nombre: string }> | null;
 };
 
 type IngestaRow = {
@@ -74,41 +62,27 @@ export default async function HomePage() {
     .eq('user_id', user.id)
     .single();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAR();
 
   const { data: ingestasData } = await supabase
     .from('ingestas')
     .select(`
       id_ingesta, tipo, kcal_total, proteinas_total_g, grasas_total_g, carbs_total_g,
-      items(id_item, kcal, tipo_item, cantidad, alimentos(nombre, categoria))
+      items(id_item, kcal, alimentos(nombre))
     `)
     .eq('id_usuario', user.id)
     .eq('fecha', today);
 
-  const { data: hidraRegistros } = await supabase
-    .from('hidratacion_registros')
-    .select('id, tipo, ml')
+  const { data: hidratacionData } = await supabase
+    .from('hidratacion')
+    .select('ml_total')
     .eq('id_usuario', user.id)
     .eq('fecha', today)
-    .order('created_at', { ascending: true });
+    .single();
 
-  const registros = (hidraRegistros ?? []) as { id: number; tipo: TipoLiquido; ml: number }[];
+  const mlHoy = hidratacionData?.ml_total ?? 0;
 
   const ingestas = (ingestasData ?? []) as IngestaRow[];
-
-  const mlDeComidas: Record<TipoLiquido, number> = { agua: 0, jugo: 0, gaseosa: 0, infusion: 0, leche: 0, otro: 0 };
-  ingestas
-    .flatMap((i) => i.items ?? [])
-    .filter((item) => item.tipo_item === 'liquido')
-    .forEach((item) => {
-      const alim = Array.isArray(item.alimentos) ? item.alimentos[0] : item.alimentos;
-      const categoria = alim?.categoria ?? '';
-      const nombre = (alim?.nombre ?? '').toLowerCase();
-      const tipo: TipoLiquido = nombre.includes('gaseosa')
-        ? 'gaseosa'
-        : (CATEGORIA_A_TIPO[categoria] ?? 'otro');
-      mlDeComidas[tipo] = Math.round(mlDeComidas[tipo] + toNum(item.cantidad));
-    });
 
   const totalKcal = ingestas.reduce((a, i) => a + toNum(i.kcal_total), 0);
   const totalProte = ingestas.reduce((a, i) => a + toNum(i.proteinas_total_g), 0);
@@ -253,7 +227,7 @@ export default async function HomePage() {
         </div>
 
         {/* Hydration */}
-        <HidratacionCard registros={registros} mlDeComidas={mlDeComidas} />
+        <HidratacionCard initialMl={mlHoy} />
 
         {/* Recent meals */}
         {recentIngestas.length > 0 && (

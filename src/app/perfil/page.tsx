@@ -4,6 +4,7 @@ import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { calcularEdad } from '@/lib/calculations';
+import { todayAR } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,9 +45,10 @@ export default async function PerfilPage() {
     .single();
 
   // Monthly stats
-  const now = new Date();
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  const today = todayAR();
+  const monthStart = today.slice(0, 7) + '-01';
+  const [y, m] = today.split('-').map(Number);
+  const monthEnd = `${y}-${String(m).padStart(2, '0')}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
 
   const { count: ingestasCount } = await supabase
     .from('ingestas')
@@ -71,7 +73,7 @@ export default async function PerfilPage() {
     .lte('fecha', monthEnd);
 
   const diasUnicos = new Set((diasRegistro ?? []).map((r: { fecha: string }) => r.fecha)).size;
-  const diasDelMes = now.getDate();
+  const diasDelMes = Number(today.slice(8, 10));
   const cumplimiento = diasDelMes > 0 ? Math.round((diasUnicos / diasDelMes) * 100) : 0;
 
   const edad = physicalData?.fecha_nacimiento ? calcularEdad(physicalData.fecha_nacimiento) : null;

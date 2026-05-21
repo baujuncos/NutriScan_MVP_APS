@@ -4,6 +4,7 @@ import LogoutButton from '@/components/auth/LogoutButton';
 import BottomNav from '@/components/BottomNav';
 import { createClient } from '@/lib/supabase/server';
 import { INGESTA_TIPOS, formatIngestaLabel, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
+import { todayAR } from '@/lib/date';
 import AlimentacionClient from './AlimentacionClient';
 
 export const dynamic = 'force-dynamic';
@@ -76,7 +77,7 @@ export default async function AlimentacionPage({
   searchParams: Promise<{ fecha?: string; tipo?: string }>;
 }) {
   const params = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAR();
   const fecha = params.fecha && isValidDateInput(params.fecha) ? params.fecha : today;
   const selectedTipo = (
     params.tipo && INGESTA_TIPOS.includes(params.tipo as IngestaTipo)

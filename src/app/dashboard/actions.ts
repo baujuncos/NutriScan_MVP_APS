@@ -45,8 +45,7 @@ type IngestaRow = {
   grasas_total_g: number;
   carbs_total_g: number;
 };
-type HidraRegistroRow = { id_usuario: string; fecha: string; tipo: string; ml: number };
-type HidraByTipo = { agua: number; jugo: number; gaseosa: number; infusion: number; leche: number; otro: number };
+type HidraRow = { id_usuario: string; fecha: string; ml_total: number };
 type MacroTuple = { kcal: number; prot: number; grasas: number; carbs: number };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -61,8 +60,6 @@ const MEAL_LABELS: Record<string, string> = {
   desayuno: 'DESAYUNO', almuerzo: 'ALMUERZO', merienda: 'MERIENDA',
   cena: 'CENA', colacion: 'COLACIÓN', suplemento: 'SUPLEMENTO',
 };
-const EMPTY_MACRO: MacroTuple = { kcal: 0, prot: 0, grasas: 0, carbs: 0 };
-const EMPTY_HIDRA: HidraByTipo = { agua: 0, jugo: 0, gaseosa: 0, infusion: 0, leche: 0, otro: 0 };
 
 // Column layout:
 // 1-6   DATOS DEL USUARIO
@@ -76,8 +73,8 @@ const EMPTY_HIDRA: HidraByTipo = { agua: 0, jugo: 0, gaseosa: 0, infusion: 0, le
 // 39-42 CENA
 // 43-46 COLACIÓN
 // 47-50 SUPLEMENTO
-// 51-56 HIDRATACIÓN (agua, jugo, gaseosa, infusion, leche, otro)
-const TOTAL_COLS = 56;
+// 51    HIDRATACIÓN (ml total)
+const TOTAL_COLS = 51;
 
 export async function generateExcelAction(
   userIds: string[]
@@ -101,7 +98,7 @@ export async function generateExcelAction(
     supabase.from('academic_data').select('user_id, carrera, anio, deporte, posicion, frecuencia_practicas_semana, horas_practica, frecuencia_competencias').in('user_id', userIds),
     supabase.from('psychological_surveys').select('user_id, completed_at').in('user_id', userIds),
     supabase.from('ingestas').select('id_ingesta, id_usuario, tipo, fecha, kcal_total, proteinas_total_g, grasas_total_g, carbs_total_g').in('id_usuario', userIds).order('fecha', { ascending: true }),
-    supabase.from('hidratacion_registros').select('id_usuario, fecha, tipo, ml').in('id_usuario', userIds).order('fecha', { ascending: true }),
+    supabase.from('hidratacion').select('id_usuario, fecha, ml_total').in('id_usuario', userIds).order('fecha', { ascending: true }),
   ]);
 
   const profiles = (profilesRes.data ?? []) as ProfileRow[];
@@ -123,13 +120,10 @@ export async function generateExcelAction(
     });
   }
 
-  // userId_fecha → HidraByTipo
-  const hidraMap = new Map<string, HidraByTipo>();
-  for (const h of (hidraRes.data ?? []) as HidraRegistroRow[]) {
-    const key = `${h.id_usuario}_${h.fecha}`;
-    const rec = hidraMap.get(key) ?? { ...EMPTY_HIDRA };
-    if (h.tipo in rec) rec[h.tipo as keyof HidraByTipo] += h.ml;
-    hidraMap.set(key, rec);
+  // userId_fecha → ml total
+  const hidraMap = new Map<string, number>();
+  for (const h of (hidraRes.data ?? []) as HidraRow[]) {
+    hidraMap.set(`${h.id_usuario}_${h.fecha}`, Number(h.ml_total) || 0);
   }
 
   // Union of all dates per user (ingestas + hidratación)
@@ -138,7 +132,7 @@ export async function generateExcelAction(
     if (!datesByUser.has(ing.id_usuario)) datesByUser.set(ing.id_usuario, new Set());
     datesByUser.get(ing.id_usuario)!.add(ing.fecha);
   }
-  for (const h of (hidraRes.data ?? []) as HidraRegistroRow[]) {
+  for (const h of (hidraRes.data ?? []) as HidraRow[]) {
     if (!datesByUser.has(h.id_usuario)) datesByUser.set(h.id_usuario, new Set());
     datesByUser.get(h.id_usuario)!.add(h.fecha);
   }
@@ -180,7 +174,7 @@ export async function generateExcelAction(
     { label: 'ENCUESTA PSICOLÓGICA',         start: 24, end: 25, argb: 'FFB91C1C' },
     { label: 'FECHA',                        start: 26, end: 26, argb: 'FF374151' },
     { label: 'REGISTRO ALIMENTARIO',         start: 27, end: 50, argb: 'FFD97706' },
-    { label: 'HIDRATACIÓN (ml por tipo)',     start: 51, end: 56, argb: 'FF0891B2' },
+    { label: 'HIDRATACIÓN',                   start: 51, end: 51, argb: 'FF0891B2' },
   ];
 
   const r3 = ws.getRow(3);
@@ -201,7 +195,7 @@ export async function generateExcelAction(
   // Style fixed sections with a slightly lighter shade
   const SECTION4_FILLS: [number, number, string][] = [
     [1, 6, 'FF1E40AF'], [7, 16, 'FF065F46'], [17, 23, 'FF5B21B6'],
-    [24, 25, 'FF991B1B'], [26, 26, 'FF1F2937'], [51, 56, 'FF0E7490'],
+    [24, 25, 'FF991B1B'], [26, 26, 'FF1F2937'], [51, 51, 'FF0E7490'],
   ];
   for (const [start, end, argb] of SECTION4_FILLS) {
     for (let col = start; col <= end; col++) {
@@ -231,7 +225,7 @@ export async function generateExcelAction(
     'Completada', 'Fecha Encuesta',
     'Fecha',
     ...mealMacroCols,
-    'Agua (ml)', 'Jugo (ml)', 'Gaseosa (ml)', 'Infusión/Té (ml)', 'Leche (ml)', 'Otro (ml)',
+    'Hidratación (ml)',
   ];
 
   const COL_HEADER_COLORS = [
@@ -241,7 +235,7 @@ export async function generateExcelAction(
     ...Array(2).fill('FFB91C1C'),
     'FF374151',
     ...Array(24).fill('FFD97706'),
-    ...Array(6).fill('FF0891B2'),
+    'FF0891B2',
   ];
 
   const r5 = ws.getRow(5);
@@ -333,12 +327,8 @@ export async function generateExcelAction(
       });
 
       // Hydration
-      const h = fecha ? (hidraMap.get(`${p.user_id}_${fecha}`) ?? EMPTY_HIDRA) : EMPTY_HIDRA;
-      const hidraVals: ExcelJS.CellValue[] = [
-        h.agua || '', h.jugo || '', h.gaseosa || '',
-        h.infusion || '', h.leche || '', h.otro || '',
-      ];
-      hidraVals.forEach((val, i) => applyCell(row, 51 + i, val, bg));
+      const mlTotal = fecha ? (hidraMap.get(`${p.user_id}_${fecha}`) ?? 0) : 0;
+      applyCell(row, 51, mlTotal || '', bg);
 
       ri++;
     };
@@ -381,7 +371,7 @@ export async function generateExcelAction(
     10, 13,                             // encuesta
     13,                                 // fecha
     ...Array(24).fill(9) as number[],  // comidas (6 × 4 macros)
-    10, 10, 12, 14, 10, 10,            // hidratación
+    14,                                  // hidratación
   ];
   COL_WIDTHS.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
