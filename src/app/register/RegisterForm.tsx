@@ -7,16 +7,19 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
+import { isPasswordStrong } from '@/lib/password';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import PasswordInput from '@/components/ui/PasswordInput';
+import PasswordRules from '@/components/auth/PasswordRules';
 
 const schema = z
   .object({
     nombre: z.string().min(1, 'El nombre es requerido'),
     apellido: z.string().min(1, 'El apellido es requerido'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-    confirmPassword: z.string(),
+    password: z.string().min(1, 'La contraseña es requerida'),
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña'),
     invitationCode: z.string().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -47,29 +50,68 @@ export default function RegisterForm() {
   const {
     register,
     handleSubmit,
-    getValues,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const passwordValue = watch('password') ?? '';
 
   const onSubmit = async (data: FormData) => {
     setServerError('');
 
-    // Validate investigator code server-side
+    const policyRes = await fetch('/api/password-policy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: data.password }),
+    });
+
+    const policyJson = (await policyRes.json()) as { valid?: boolean; errors?: string[] };
+
+    if (!policyRes.ok || !policyJson.valid || !isPasswordStrong(data.password)) {
+      setError('password', {
+        message: policyJson.errors?.[0] ?? 'La contraseña no cumple los requisitos mínimos.',
+      });
+      return;
+    }
+
+    const checkRes = await fetch('/api/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: data.email }),
+    });
+
+    const checkJson = (await checkRes.json()) as { exists?: boolean; error?: string };
+
+    if (!checkRes.ok) {
+      setServerError(checkJson.error ?? 'No se pudo validar el email.');
+      return;
+    }
+
+    if (checkJson.exists) {
+      setError('email', { message: 'Ya existe una cuenta registrada con este email' });
+      return;
+    }
+
     if (isInvestigador) {
+      const code = data.invitationCode?.trim() ?? '';
+      if (!code) {
+        setError('invitationCode', { message: 'El código de investigador es obligatorio.' });
+        return;
+      }
+
       const res = await fetch('/api/validate-investigator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: data.invitationCode ?? '' }),
+        body: JSON.stringify({ code }),
       });
-      const json = await res.json();
+      const json = (await res.json()) as { valid?: boolean };
       if (!json.valid) {
-        setServerError('Código de investigador inválido.');
+        setError('invitationCode', { message: 'Código de investigador inválido.' });
         return;
       }
     }
 
-    // The role is determined in the callback after email confirmation.
-    // For investigators the role is stored in the redirect URL.
     const callbackUrl = isInvestigador
       ? `${window.location.origin}/auth/callback?role=investigador`
       : `${window.location.origin}/auth/callback`;
@@ -78,8 +120,6 @@ export default function RegisterForm() {
       email: data.email,
       password: data.password,
       options: {
-        // nombre and apellido are stored in metadata so the callback can
-        // create the profile row after the user confirms their email.
         data: {
           nombre: data.nombre,
           apellido: data.apellido,
@@ -89,32 +129,20 @@ export default function RegisterForm() {
     });
 
     if (signUpError) {
-      setServerError(signUpError.message);
+      if (signUpError.message.toLowerCase().includes('already')) {
+        setError('email', { message: 'Ya existe una cuenta registrada con este email' });
+      } else {
+        setServerError(signUpError.message);
+      }
       return;
     }
 
-    // Profile row is created in /auth/callback after email confirmation.
-    // Show a confirmation message instead of redirecting immediately.
     setEmailSent(true);
   };
 
   const handleGoogleAuth = async (role?: 'investigador') => {
-    // For investigadores using Google, validate the code first.
-    if (role === 'investigador') {
-      const code = getValues('invitationCode') ?? '';
-      const res = await fetch('/api/validate-investigator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-      const json = await res.json();
-      if (!json.valid) {
-        setServerError('Código de investigador inválido.');
-        return;
-      }
-    }
-
     setGoogleLoading(true);
+
     const redirectTo =
       role === 'investigador'
         ? `${window.location.origin}/auth/callback?role=investigador`
@@ -154,11 +182,17 @@ export default function RegisterForm() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
+    <main
+      className={`flex min-h-screen flex-col items-center justify-center px-4 py-8 ${
+        isInvestigador
+          ? 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100'
+          : 'bg-gradient-to-br from-green-50 to-emerald-100'
+      }`}
+    >
+      <div className="w-full max-w-md rounded-2xl border border-white/60 bg-white p-8 shadow-xl">
         <div className="mb-6 text-center">
           <Link href="/" className="inline-block">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-600">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-blue-700">
               <span className="text-2xl">🥗</span>
             </div>
           </Link>
@@ -172,7 +206,6 @@ export default function RegisterForm() {
           </p>
         </div>
 
-        {/* Google OAuth button */}
         <Button
           type="button"
           variant="outline"
@@ -182,8 +215,14 @@ export default function RegisterForm() {
           onClick={() => handleGoogleAuth(isInvestigador ? 'investigador' : undefined)}
         >
           <GoogleIcon />
-          {isInvestigador ? 'Registrarse con Google como Investigador' : 'Registrarse con Google'}
+          {isInvestigador ? 'Continuar con Google como Investigador' : 'Registrarse con Google'}
         </Button>
+
+        {isInvestigador && (
+          <p className="mb-4 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-700">
+            Si continuás con Google, después del login deberás ingresar tu código institucional para completar el alta.
+          </p>
+        )}
 
         <div className="relative mb-4">
           <div className="absolute inset-0 flex items-center">
@@ -221,29 +260,28 @@ export default function RegisterForm() {
             {...register('email')}
           />
 
-          <Input
+          <PasswordInput
             id="password"
             label="Contraseña"
-            type="password"
             placeholder="••••••••"
             error={errors.password?.message}
             {...register('password')}
           />
 
-          <Input
+          <PasswordRules password={passwordValue} />
+
+          <PasswordInput
             id="confirmPassword"
             label="Confirmar Contraseña"
-            type="password"
             placeholder="••••••••"
             error={errors.confirmPassword?.message}
             {...register('confirmPassword')}
           />
 
           {isInvestigador && (
-            <Input
+            <PasswordInput
               id="invitationCode"
               label="Código de Investigador"
-              type="password"
               placeholder="Ingresa tu código de acceso"
               error={errors.invitationCode?.message}
               {...register('invitationCode')}

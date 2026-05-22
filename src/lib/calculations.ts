@@ -1,11 +1,14 @@
 import { ActivityFactor } from '@/types';
 
 export function calcularEdad(fechaNacimiento: string): number {
+  const [year, month, day] = fechaNacimiento.split('-').map(Number);
+  const nacimiento = new Date(Date.UTC(year, (month || 1) - 1, day || 1));
   const hoy = new Date();
-  const nacimiento = new Date(fechaNacimiento);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const mes = hoy.getMonth() - nacimiento.getMonth();
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+  const hoyUtc = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), hoy.getUTCDate()));
+
+  let edad = hoyUtc.getUTCFullYear() - nacimiento.getUTCFullYear();
+  const mes = hoyUtc.getUTCMonth() - nacimiento.getUTCMonth();
+  if (mes < 0 || (mes === 0 && hoyUtc.getUTCDate() < nacimiento.getUTCDate())) {
     edad--;
   }
   return edad;

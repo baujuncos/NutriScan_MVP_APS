@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes - accessible without auth
-  const publicRoutes = ['/', '/login', '/register', '/auth/callback'];
+  const publicRoutes = ['/', '/login', '/register', '/auth/callback', '/forgot-password', '/reset-password'];
   const isPublicRoute = 
     publicRoutes.some((r) => pathname === r || pathname.startsWith('/auth/')) ||
     pathname.startsWith('/api/'); // Allow all /api/* routes
@@ -71,8 +71,9 @@ export async function proxy(request: NextRequest) {
 
     if (profile) {
       const onboardingRedirect = getOnboardingRedirect(profile);
-  const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica', '/elegir-uso'];
+      const onboardingPaths = ['/perfil-fisico', '/perfil-academico', '/encuesta-psicologica', '/elegir-uso'];
       const isOnboardingRoute = onboardingPaths.some((p) => pathname.startsWith(p));
+      const isEditMode = request.nextUrl.searchParams.get('edit') === '1';
       const isMainRoute =
         pathname.startsWith('/home') ||
         pathname.startsWith('/dashboard') ||
@@ -82,7 +83,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(new URL(onboardingRedirect, request.url));
       }
 
-      if (!onboardingRedirect && isOnboardingRoute) {
+      if (!onboardingRedirect && isOnboardingRoute && !isEditMode) {
         const dest = profile.role === 'investigador' ? '/dashboard' : '/home';
         return NextResponse.redirect(new URL(dest, request.url));
       }

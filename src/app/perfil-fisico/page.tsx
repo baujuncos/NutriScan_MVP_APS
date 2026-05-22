@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
 import { calcularPerfilNutricional } from '@/lib/calculations';
+import { validateBirthdate } from '@/lib/birthdate';
 import { ActivityFactor } from '@/types';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -24,6 +26,11 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+type ProfileSummary = {
+  role: 'deportista_ucc' | 'particular' | 'investigador' | 'administrador';
+  academic_completed: boolean;
+};
+
 const actividadOptions = [
   { value: '', label: 'Selecciona tu nivel de actividad' },
   { value: 1.2, label: 'Sedentario – sin ejercicio' },
@@ -34,15 +41,63 @@ const actividadOptions = [
 
 export default function PerfilFisicoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get('edit') === '1';
   const supabase = createClient();
   const [serverError, setServerError] = useState('');
+  const [profileInfo, setProfileInfo] = useState<ProfileSummary | null>(null);
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
+    reset,
   } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  useEffect(() => {
+    const loadExistingData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      const [{ data: physicalData }, { data: profile }] = await Promise.all([
+        supabase
+          .from('physical_data')
+          .select('peso_kg, altura_cm, fecha_nacimiento, sexo, factor_actividad')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('role, academic_completed')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+
+      if (profile) {
+        setProfileInfo(profile as ProfileSummary);
+      }
+
+      if (physicalData) {
+        reset({
+          peso_kg: String(physicalData.peso_kg ?? ''),
+          altura_cm: String(physicalData.altura_cm ?? ''),
+          fecha_nacimiento: physicalData.fecha_nacimiento ?? '',
+          sexo: physicalData.sexo ?? '',
+          factor_actividad: String(physicalData.factor_actividad ?? ''),
+        });
+      }
+    };
+
+    loadExistingData();
+  // supabase and router are stable for this component lifecycle
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reset]);
 
   const onSubmit = async (data: FormData) => {
     setServerError('');
@@ -69,6 +124,12 @@ export default function PerfilFisicoPage() {
       return;
     }
 
+    const birthdateValidation = validateBirthdate(data.fecha_nacimiento);
+    if (!birthdateValidation.valid) {
+      setError('fecha_nacimiento', { message: birthdateValidation.message });
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -86,15 +147,18 @@ export default function PerfilFisicoPage() {
       factorActividad as ActivityFactor,
     );
 
-    const { error: physicalError } = await supabase.from('physical_data').upsert({
-      user_id: user.id,
-      peso_kg: pesoKg,
-      altura_cm: alturaCm,
-      fecha_nacimiento: data.fecha_nacimiento,
-      sexo,
-      factor_actividad: factorActividad,
-      ...nutricional,
-    });
+    const { error: physicalError } = await supabase.from('physical_data').upsert(
+      {
+        user_id: user.id,
+        peso_kg: pesoKg,
+        altura_cm: alturaCm,
+        fecha_nacimiento: data.fecha_nacimiento,
+        sexo,
+        factor_actividad: factorActividad,
+        ...nutricional,
+      },
+      { onConflict: 'user_id' },
+    );
 
     if (physicalError) {
       setServerError('Error al guardar el perfil físico. Intente nuevamente.');
@@ -111,14 +175,13 @@ export default function PerfilFisicoPage() {
       return;
     }
 
-    // Check role to determine next step
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .single();
+    if (isEditMode) {
+      router.push('/perfil');
+      router.refresh();
+      return;
+    }
 
-    if (profile?.role === 'deportista_ucc') {
+    if (profileInfo?.role === 'deportista_ucc' && !profileInfo.academic_completed) {
       router.push('/perfil-academico');
     } else {
       router.push('/home');
@@ -136,83 +199,90 @@ export default function PerfilFisicoPage() {
         </div>
       </header>
 
-    <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-bold text-white">
-              1
+      <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-bold text-white">
+                  1
+                </div>
+                <span className="text-sm text-gray-500">Fase 1 de 3</span>
+              </div>
+              {isEditMode ? (
+                <Link href="/perfil" className="text-sm font-medium text-blue-600 hover:underline">
+                  ← Volver al perfil
+                </Link>
+              ) : null}
             </div>
-            <span className="text-sm text-gray-500">Fase 1 de 3</span>
-            <div className="flex-1 ml-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-full bg-blue-700 rounded-full" style={{ width: '33%' }} />
             </div>
+            <h2 className="mt-4 text-2xl font-bold text-gray-900">Perfil Físico</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Esta información nos permite calcular tus requerimientos nutricionales personalizados.
+            </p>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900">Perfil Físico</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Esta información nos permite calcular tus requerimientos nutricionales personalizados.
-          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="peso_kg"
+                label="Peso (kg)"
+                type="number"
+                step="0.1"
+                placeholder="70"
+                error={errors.peso_kg?.message}
+                {...register('peso_kg')}
+              />
+              <Input
+                id="altura_cm"
+                label="Altura (cm)"
+                type="number"
+                placeholder="170"
+                error={errors.altura_cm?.message}
+                {...register('altura_cm')}
+              />
+            </div>
+
+            <Input
+              id="fecha_nacimiento"
+              label="Fecha de Nacimiento"
+              type="date"
+              error={errors.fecha_nacimiento?.message}
+              {...register('fecha_nacimiento')}
+            />
+
+            <Select
+              id="sexo"
+              label="Sexo"
+              error={errors.sexo?.message}
+              options={[
+                { value: '', label: 'Selecciona tu sexo' },
+                { value: 'M', label: 'Masculino' },
+                { value: 'F', label: 'Femenino' },
+              ]}
+              {...register('sexo')}
+            />
+
+            <Select
+              id="factor_actividad"
+              label="Nivel de Actividad Física"
+              error={errors.factor_actividad?.message}
+              options={actividadOptions}
+              {...register('factor_actividad')}
+            />
+
+            {serverError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
+            )}
+
+            <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2">
+              {isEditMode ? 'Guardar cambios' : 'Guardar y Continuar →'}
+            </Button>
+          </form>
         </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="peso_kg"
-              label="Peso (kg)"
-              type="number"
-              step="0.1"
-              placeholder="70"
-              error={errors.peso_kg?.message}
-              {...register('peso_kg')}
-            />
-            <Input
-              id="altura_cm"
-              label="Altura (cm)"
-              type="number"
-              placeholder="170"
-              error={errors.altura_cm?.message}
-              {...register('altura_cm')}
-            />
-          </div>
-
-          <Input
-            id="fecha_nacimiento"
-            label="Fecha de Nacimiento"
-            type="date"
-            error={errors.fecha_nacimiento?.message}
-            {...register('fecha_nacimiento')}
-          />
-
-          <Select
-            id="sexo"
-            label="Sexo"
-            error={errors.sexo?.message}
-            options={[
-              { value: '', label: 'Selecciona tu sexo' },
-              { value: 'M', label: 'Masculino' },
-              { value: 'F', label: 'Femenino' },
-            ]}
-            {...register('sexo')}
-          />
-
-          <Select
-            id="factor_actividad"
-            label="Nivel de Actividad Física"
-            error={errors.factor_actividad?.message}
-            options={actividadOptions}
-            {...register('factor_actividad')}
-          />
-
-          {serverError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-          )}
-
-          <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2">
-            Guardar y Continuar →
-          </Button>
-        </form>
-      </div>
-    </main>
+      </main>
     </div>
   );
 }

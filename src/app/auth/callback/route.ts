@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { extractNombreApellido } from '@/lib/roles';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
 
       if (user) {
         try {
+          const admin = createAdminClient();
           const { data: existingProfile, error: selectError } = await supabase
             .from('profiles')
             .select('id, role')
@@ -32,13 +34,30 @@ export async function GET(request: NextRequest) {
 
           if (!existingProfile) {
             const email = user.email ?? '';
+            const normalizedEmail = email.trim().toLowerCase();
             const isUCC = email.toLowerCase().endsWith('@ucc.edu.ar');
             const { nombre, apellido } = extractNombreApellido(
               user.user_metadata as Record<string, unknown>,
             );
+            const { data: duplicated } = await admin
+              .from('profiles')
+              .select('user_id')
+              .ilike('email', normalizedEmail)
+              .neq('user_id', user.id)
+              .limit(1);
+
+            if ((duplicated ?? []).length > 0) {
+              return NextResponse.redirect(`${origin}/login?error=email_exists`);
+            }
 
             if (roleParam === 'investigador') {
-              // Investigador confirmed via Google OAuth or email link with role in URL
+              // Investigador via Google must complete additional code after login.
+              // Email signup investigators keep regular flow because they already validated before signUp.
+              const provider = (user.app_metadata as { provider?: string } | undefined)?.provider;
+              if (provider === 'google') {
+                return NextResponse.redirect(`${origin}/complete-investigador`);
+              }
+
               await supabase.from('profiles').insert({
                 user_id: user.id,
                 nombre,

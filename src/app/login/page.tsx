@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
+import { isPasswordStrong } from '@/lib/password';
+import PasswordInput from '@/components/ui/PasswordInput';
+import PasswordRules from '@/components/auth/PasswordRules';
 import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(1, 'Ingresa tu contraseña'),
 });
 
 const registerSchema = z
@@ -18,14 +21,16 @@ const registerSchema = z
     nombre: z.string().min(1, 'El nombre es requerido'),
     apellido: z.string().min(1, 'El apellido es requerido'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
-    confirmPassword: z.string(),
+    password: z.string().min(1, 'La contraseña es requerida'),
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña'),
   })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  });
 
 type RegisterData = z.infer<typeof registerSchema>;
 type LoginData = z.infer<typeof loginSchema>;
-
-
 
 function LeftPanel() {
   return (
@@ -99,11 +104,28 @@ function GoogleIcon() {
 
 function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const oauthError = useMemo(() => {
+    const error = searchParams.get('error');
+    if (error === 'email_exists') {
+      return 'Ya existe una cuenta registrada con este email.';
+    }
+    if (error === 'auth_callback_error') {
+      return 'No se pudo completar la autenticación. Intenta nuevamente.';
+    }
+    return '';
+  }, [searchParams]);
+
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
   });
 
@@ -178,23 +200,22 @@ function LoginForm() {
             <label htmlFor="login-password" className="text-sm font-medium text-gray-700">
               Contraseña
             </label>
-            <button type="button" className="text-xs text-blue-600 hover:underline">
+            <Link href="/forgot-password" className="text-xs text-blue-600 hover:underline">
               ¿Olvidaste tu contraseña?
-            </button>
+            </Link>
           </div>
-          <input
+          <PasswordInput
             id="login-password"
-            type="password"
             placeholder="••••••••"
+            error={errors.password?.message}
+            className="rounded-xl border-gray-200 px-4 py-3 text-sm"
             {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
-        {serverError && (
+        {(oauthError || serverError) && (
           <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">
-            {serverError}
+            {oauthError || serverError}
           </div>
         )}
 
@@ -215,12 +236,54 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterData>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    setError,
+  } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
   });
 
+  const passwordValue = watch('password') ?? '';
+
   const onSubmit = async (data: RegisterData) => {
     setServerError('');
+
+    const policyRes = await fetch('/api/password-policy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: data.password }),
+    });
+
+    const policyJson = (await policyRes.json()) as { valid?: boolean; errors?: string[] };
+
+    if (!policyRes.ok || !policyJson.valid || !isPasswordStrong(data.password)) {
+      setError('password', {
+        message: policyJson.errors?.[0] ?? 'La contraseña no cumple los requisitos mínimos.',
+      });
+      return;
+    }
+
+    const checkRes = await fetch('/api/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: data.email }),
+    });
+
+    const checkJson = (await checkRes.json()) as { exists?: boolean; error?: string };
+
+    if (!checkRes.ok) {
+      setServerError(checkJson.error ?? 'No se pudo validar el email.');
+      return;
+    }
+
+    if (checkJson.exists) {
+      setError('email', { message: 'Ya existe una cuenta registrada con este email' });
+      return;
+    }
+
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -230,7 +293,11 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
       },
     });
     if (error) {
-      setServerError(error.message);
+      if (error.message.toLowerCase().includes('already')) {
+        setError('email', { message: 'Ya existe una cuenta registrada con este email' });
+      } else {
+        setServerError(error.message);
+      }
       return;
     }
     onSuccess();
@@ -309,27 +376,23 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
-          />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
-        </div>
+        <PasswordInput
+          label="Contraseña"
+          placeholder="••••••••"
+          error={errors.password?.message}
+          className="rounded-xl border-gray-200 px-4 py-3 text-sm"
+          {...register('password')}
+        />
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirmar contraseña</label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            {...register('confirmPassword')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
-          />
-          {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>}
-        </div>
+        <PasswordRules password={passwordValue} />
+
+        <PasswordInput
+          label="Confirmar contraseña"
+          placeholder="••••••••"
+          error={errors.confirmPassword?.message}
+          className="rounded-xl border-gray-200 px-4 py-3 text-sm"
+          {...register('confirmPassword')}
+        />
 
         <p className="text-xs text-gray-500 pt-1">
           Si tu email es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
@@ -371,7 +434,10 @@ export default function LoginPage() {
             Te enviamos un enlace de confirmación. Hacé clic en el enlace para activar tu cuenta y continuar.
           </p>
           <button
-            onClick={() => { setEmailSent(false); setTab('login'); }}
+            onClick={() => {
+              setEmailSent(false);
+              setTab('login');
+            }}
             className="text-blue-600 font-medium hover:underline text-sm"
           >
             ← Volver al inicio de sesión
@@ -416,13 +482,8 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {tab === 'login' ? (
-          <LoginForm />
-        ) : (
-          <RegisterFormInline onSuccess={() => setEmailSent(true)} />
-        )}
+        {tab === 'login' ? <LoginForm /> : <RegisterFormInline onSuccess={() => setEmailSent(true)} />}
 
-        {/* MODIFICACIÓN: Renderizado condicional para mostrar solo en 'register' */}
         {tab === 'register' && (
           <p className="mt-8 text-xs text-gray-400">
             ¿Investigador?{' '}

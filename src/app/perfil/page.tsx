@@ -5,12 +5,9 @@ import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { calcularEdad } from '@/lib/calculations';
 import { todayAR } from '@/lib/date';
+import { buildInitials } from '@/lib/profile';
 
 export const dynamic = 'force-dynamic';
-
-function getInitials(nombre: string, apellido: string): string {
-  return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
-}
 
 function getRoleLabel(role: string): string {
   if (role === 'deportista_ucc') return 'Deportista UCC';
@@ -77,7 +74,7 @@ export default async function PerfilPage() {
   const cumplimiento = diasDelMes > 0 ? Math.round((diasUnicos / diasDelMes) * 100) : 0;
 
   const edad = physicalData?.fecha_nacimiento ? calcularEdad(physicalData.fecha_nacimiento) : null;
-  const initials = getInitials(profile.nombre, profile.apellido);
+  const initials = buildInitials(profile.nombre, profile.apellido);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -158,7 +155,7 @@ export default async function PerfilPage() {
           <div className="space-y-2">
             {profile.role === 'deportista_ucc' && (
               <Link
-                href="/encuesta-psicologica"
+                href="/encuesta-psicologica?edit=1"
                 className="flex items-center justify-between p-4 rounded-xl border-l-4 transition-colors hover:bg-gray-50"
                 style={{ borderColor: '#3b82f6', backgroundColor: '#eff6ff' }}
               >
@@ -182,7 +179,7 @@ export default async function PerfilPage() {
             )}
 
             <Link
-              href="/perfil-fisico"
+              href="/perfil-fisico?edit=1"
               className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -210,6 +207,32 @@ export default async function PerfilPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
               </svg>
             </Link>
+
+            {profile.role === 'deportista_ucc' && (
+              <Link
+                href="/perfil-academico?edit=1"
+                className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#2563eb" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5h16.5m-16.5 5.25h16.5m-16.5 5.25h10.5m-10.5 5.25h10.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Editar datos académicos</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {academicData
+                        ? `${academicData.deporte} · ${academicData.posicion}`
+                        : 'Datos deportivos y académicos'}
+                    </p>
+                  </div>
+                </div>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-400 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
+            )}
           </div>
         </div>
 

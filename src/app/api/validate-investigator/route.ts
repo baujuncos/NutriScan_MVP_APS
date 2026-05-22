@@ -10,8 +10,6 @@ export async function POST(request: NextRequest) {
 
     const validCode = process.env.INVITATION_CODE_INVESTIGADOR;
 
-    console.log(validCode, code);
-
     if (!validCode) {
       console.error('INVITATION_CODE_INVESTIGADOR env var not set');
       return NextResponse.json(
