@@ -279,9 +279,10 @@ export default function RegisterForm() {
           />
 
           {isInvestigador && (
-            <PasswordInput
+            <Input
               id="invitationCode"
               label="Código de Investigador"
+              type="password"
               placeholder="Ingresa tu código de acceso"
               error={errors.invitationCode?.message}
               {...register('invitationCode')}

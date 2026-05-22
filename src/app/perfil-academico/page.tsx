@@ -196,6 +196,10 @@ export default function PerfilAcademicoPage() {
     }
 
     const posicionesValidas = POSICIONES_POR_DEPORTE[data.deporte] ?? [];
+    if (!data.posicion.trim()) {
+      setError('posicion', { message: 'Selecciona tu posición en el equipo' });
+      return;
+    }
     if (!posicionesValidas.includes(data.posicion)) {
       setError('posicion', { message: 'Selecciona una posición válida' });
       return;
