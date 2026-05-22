@@ -4,6 +4,7 @@ import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { type IngestaTipo } from '@/lib/nutrition';
+import { todayAR } from '@/lib/date';
 import HidratacionCard from './HidratacionCard';
 
 export const dynamic = 'force-dynamic';
@@ -61,7 +62,7 @@ export default async function HomePage() {
     .eq('user_id', user.id)
     .single();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAR();
 
   const { data: ingestasData } = await supabase
     .from('ingestas')

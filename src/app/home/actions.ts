@@ -2,13 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { todayAR } from '@/lib/date';
 
 export async function updateHidratacion(delta: number): Promise<{ ml: number } | { error: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'No autenticado' };
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAR();
 
   const { data: current } = await supabase
     .from('hidratacion')
