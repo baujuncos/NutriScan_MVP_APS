@@ -97,11 +97,92 @@ function GoogleIcon() {
   );
 }
 
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const supabase = createClient();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setLoading(false);
+    if (resetError) {
+      setError('No se pudo enviar el email. Verificá la dirección ingresada.');
+      return;
+    }
+    setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="w-full max-w-sm text-center">
+        <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Revisá tu email</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Si existe una cuenta con <strong>{email}</strong>, recibirás un enlace para restablecer tu contraseña.
+        </p>
+        <button onClick={onBack} className="text-blue-600 font-medium hover:underline text-sm">
+          ← Volver al inicio de sesión
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+        </svg>
+        Volver
+      </button>
+      <h2 className="text-2xl font-bold text-gray-900 mb-1">¿Olvidaste tu contraseña?</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Ingresá tu email y te enviaremos un enlace para restablecerla.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <input
+            type="email"
+            placeholder="juanperez@hotmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
+          />
+        </div>
+        {error && (
+          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">{error}</div>
+        )}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60"
+        >
+          {loading ? 'Enviando...' : 'Enviar enlace →'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -132,6 +213,10 @@ function LoginForm() {
       setGoogleLoading(false);
     }
   };
+
+  if (showForgot) {
+    return <ForgotPasswordForm onBack={() => setShowForgot(false)} />;
+  }
 
   return (
     <div className="w-full max-w-sm">
@@ -178,7 +263,7 @@ function LoginForm() {
             <label htmlFor="login-password" className="text-sm font-medium text-gray-700">
               Contraseña
             </label>
-            <button type="button" className="text-xs text-blue-600 hover:underline">
+            <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-blue-600 hover:underline">
               ¿Olvidaste tu contraseña?
             </button>
           </div>
