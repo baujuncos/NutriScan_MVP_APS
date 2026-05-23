@@ -113,3 +113,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ sent: results.length, results });  
 }
+
+// Permite que Vercel Cron Jobs (GET) ejecute la misma lógica
+export async function GET(req: NextRequest) {
+  return POST(req);
+}
