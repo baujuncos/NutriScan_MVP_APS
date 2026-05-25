@@ -266,8 +266,10 @@ export async function generateExcelAction(
     c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
     c.alignment = { vertical: 'middle' };
     c.border = {
-      right: { style: 'hair', color: { argb: 'FFD1D5DB' } },
-      bottom: { style: 'hair', color: { argb: 'FFD1D5DB' } },
+      top:    { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      left:   { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      right:  { style: 'thin', color: { argb: 'FFD1D5DB' } },
+      bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
     };
   };
 
@@ -357,7 +359,7 @@ export async function generateExcelAction(
         const cell = ws.getCell(blockStart + blockSize - 1, col);
         cell.border = {
           ...cell.border,
-          bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+          bottom: { style: 'medium', color: { argb: 'FF9CA3AF' } },
         };
       }
     }
