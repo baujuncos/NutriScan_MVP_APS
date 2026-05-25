@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
+import ExportPanel from './ExportPanel';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -76,8 +77,19 @@ export default async function DashboardPage() {
           <StatCard label="Encuestas" value={completedSurveys} color="pink" />
         </div>
 
+        {/* Export panel */}
+        <ExportPanel
+          users={(allProfiles ?? []).map((p) => ({
+            user_id: p.user_id,
+            nombre: p.nombre,
+            apellido: p.apellido,
+            email: p.email,
+            role: p.role,
+          }))}
+        />
+
         {/* Users table */}
-        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden mt-8">
           <div className="border-b px-6 py-4">
             <h3 className="font-semibold text-gray-900">Usuarios Registrados</h3>
             <p className="text-sm text-gray-500">{totalUsers} usuarios en total</p>
