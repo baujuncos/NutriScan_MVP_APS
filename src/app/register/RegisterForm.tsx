@@ -132,19 +132,18 @@ export default function RegisterForm() {
 
   if (emailSent) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-8">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
             <span className="text-3xl">📧</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisa tu email!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu email!</h2>
           <p className="text-gray-600 mb-4">
-            Te enviamos un enlace de confirmación. Haz clic en el enlace para activar tu cuenta y
-            continuar el registro.
+            Te enviamos un enlace de confirmación. Hacé clic en el enlace para activar tu cuenta y continuar el registro.
           </p>
           <p className="text-sm text-gray-500">
             ¿Ya confirmaste?{' '}
-            <Link href="/login" className="font-medium text-green-600 hover:underline">
+            <Link href="/login" className="font-medium text-blue-700 hover:underline">
               Iniciar Sesión
             </Link>
           </p>
@@ -154,125 +153,129 @@ export default function RegisterForm() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
-          <Link href="/" className="inline-block">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-600">
-              <span className="text-2xl">🥗</span>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <header className="bg-white px-4 py-4 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
+        </div>
+      </header>
+
+      <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 text-center">
+              {isInvestigador ? 'Registro Investigador' : 'Crear Cuenta'}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 text-center">
+              {isInvestigador
+                ? 'Acceso exclusivo para investigadores UCC'
+                : 'Únete a NutriScan hoy'}
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="mb-4 w-full"
+            loading={googleLoading}
+            onClick={() => handleGoogleAuth(isInvestigador ? 'investigador' : undefined)}
+          >
+            <GoogleIcon />
+            {isInvestigador ? 'Registrarse con Google como Investigador' : 'Registrarse con Google'}
+          </Button>
+
+          <div className="relative mb-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
             </div>
-          </Link>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {isInvestigador ? 'Registro Investigador' : 'Crear Cuenta'}
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {isInvestigador
-              ? 'Acceso exclusivo para investigadores UCC'
-              : 'Únete a NutriScan hoy'}
+            <div className="relative flex justify-center text-xs text-gray-400">
+              <span className="bg-white px-2">o con tu email</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="nombre"
+                label="Nombre"
+                placeholder="Juan"
+                error={errors.nombre?.message}
+                {...register('nombre')}
+              />
+              <Input
+                id="apellido"
+                label="Apellido"
+                placeholder="Pérez"
+                error={errors.apellido?.message}
+                {...register('apellido')}
+              />
+            </div>
+
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              placeholder={isInvestigador ? 'investigador@ucc.edu.ar' : 'tu@email.com'}
+              error={errors.email?.message}
+              {...register('email')}
+            />
+
+            <Input
+              id="password"
+              label="Contraseña"
+              type="password"
+              placeholder="••••••••"
+              error={errors.password?.message}
+              {...register('password')}
+            />
+
+            <Input
+              id="confirmPassword"
+              label="Confirmar Contraseña"
+              type="password"
+              placeholder="••••••••"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword')}
+            />
+
+            {isInvestigador && (
+              <Input
+                id="invitationCode"
+                label="Código de Investigador"
+                type="password"
+                placeholder="Ingresa tu código de acceso"
+                error={errors.invitationCode?.message}
+                {...register('invitationCode')}
+              />
+            )}
+
+            {serverError && (
+              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
+            )}
+
+            {!isInvestigador && (
+              <p className="text-xs text-gray-500">
+                Si tu email es <strong>@ucc.edu.ar</strong>, al confirmar tu cuenta podrás elegir cómo
+                usarás NutriScan.
+              </p>
+            )}
+
+            <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2 bg-blue-700 hover:bg-blue-800 text-white">
+              {isInvestigador ? 'Acceder como Investigador' : 'Crear Cuenta'}
+            </Button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-gray-500">
+            ¿Ya tienes cuenta?{' '}
+            <Link href="/login" className="font-medium text-blue-700 hover:underline">
+              Iniciar Sesión
+            </Link>
           </p>
         </div>
-
-        {/* Google OAuth button */}
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="mb-4 w-full"
-          loading={googleLoading}
-          onClick={() => handleGoogleAuth(isInvestigador ? 'investigador' : undefined)}
-        >
-          <GoogleIcon />
-          {isInvestigador ? 'Registrarse con Google como Investigador' : 'Registrarse con Google'}
-        </Button>
-
-        <div className="relative mb-4">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-2">o con tu email</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="nombre"
-              label="Nombre"
-              placeholder="Juan"
-              error={errors.nombre?.message}
-              {...register('nombre')}
-            />
-            <Input
-              id="apellido"
-              label="Apellido"
-              placeholder="Pérez"
-              error={errors.apellido?.message}
-              {...register('apellido')}
-            />
-          </div>
-
-          <Input
-            id="email"
-            label="Email"
-            type="email"
-            placeholder={isInvestigador ? 'investigador@ucc.edu.ar' : 'tu@email.com'}
-            error={errors.email?.message}
-            {...register('email')}
-          />
-
-          <Input
-            id="password"
-            label="Contraseña"
-            type="password"
-            placeholder="••••••••"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-
-          <Input
-            id="confirmPassword"
-            label="Confirmar Contraseña"
-            type="password"
-            placeholder="••••••••"
-            error={errors.confirmPassword?.message}
-            {...register('confirmPassword')}
-          />
-
-          {isInvestigador && (
-            <Input
-              id="invitationCode"
-              label="Código de Investigador"
-              type="password"
-              placeholder="Ingresa tu código de acceso"
-              error={errors.invitationCode?.message}
-              {...register('invitationCode')}
-            />
-          )}
-
-          {serverError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-          )}
-
-          {!isInvestigador && (
-            <p className="text-xs text-gray-500">
-              Si tu email es <strong>@ucc.edu.ar</strong>, al confirmar tu cuenta podrás elegir cómo
-              usarás NutriScan.
-            </p>
-          )}
-
-          <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
-            {isInvestigador ? 'Acceder como Investigador' : 'Crear Cuenta'}
-          </Button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-gray-500">
-          ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-medium text-green-600 hover:underline">
-            Iniciar Sesión
-          </Link>
-        </p>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
