@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 // Configuración desde variables de entorno
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // Configuración de Nodemailer para Gmail
@@ -112,4 +112,9 @@ export async function POST(req: NextRequest) {
   console.log('Reminders:', reminders);
 
   return NextResponse.json({ sent: results.length, results });  
+}
+
+// Permite que Vercel Cron Jobs (GET) ejecute la misma lógica
+export async function GET(req: NextRequest) {
+  return POST(req);
 }
