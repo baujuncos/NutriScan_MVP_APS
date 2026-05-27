@@ -6,6 +6,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
+import { strongPasswordSchema } from '@/lib/password';
+import PasswordRules from '@/components/ui/PasswordRules';
+import Input from '@/components/ui/Input';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -15,11 +18,15 @@ const loginSchema = z.object({
 
 const registerSchema = z
   .object({
-    nombre: z.string().min(1, 'El nombre es requerido'),
-    apellido: z.string().min(1, 'El apellido es requerido'),
+    nombre: z.string().trim().min(1, 'El nombre es requerido'),
+    apellido: z.string().trim().min(1, 'El apellido es requerido'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
+    password: strongPasswordSchema,
     confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
   })
 
 type RegisterData = z.infer<typeof registerSchema>;
@@ -267,14 +274,13 @@ function LoginForm() {
               ¿Olvidaste tu contraseña?
             </button>
           </div>
-          <input
+          <Input
             id="login-password"
             type="password"
             placeholder="••••••••"
+            error={errors.password?.message}
             {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
         {serverError && (
@@ -300,25 +306,41 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterData>({
+  const { register, handleSubmit, watch, setError, formState: { errors, isSubmitting } } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onTouched',
   });
+
+  const passwordValue = watch('password') ?? '';
 
   const onSubmit = async (data: RegisterData) => {
     setServerError('');
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: { nombre: data.nombre, apellido: data.apellido },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setServerError(error.message);
-      return;
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          nombre: data.nombre,
+          apellido: data.apellido,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setError('email', { message: 'Ya existe una cuenta con este email.' });
+        return;
+      }
+      if (!res.ok) {
+        if (json?.field === 'password') setError('password', { message: json.message });
+        else if (json?.field === 'email') setError('email', { message: json.message });
+        else setServerError(json?.message ?? 'No pudimos crear la cuenta.');
+        return;
+      }
+      onSuccess();
+    } catch {
+      setServerError('Error de conexión. Intentá de nuevo.');
     }
-    onSuccess();
   };
 
   const handleGoogleRegister = async () => {
@@ -395,26 +417,25 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
-          <input
+          <Input
+            id="register-password"
+            label="Contraseña"
             type="password"
             placeholder="••••••••"
+            error={errors.password?.message}
             {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+          <PasswordRules value={passwordValue} className="mt-2" />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirmar contraseña</label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            {...register('confirmPassword')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
-          />
-          {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>}
-        </div>
+        <Input
+          id="register-confirm"
+          label="Confirmar contraseña"
+          type="password"
+          placeholder="••••••••"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword')}
+        />
 
         <p className="text-xs text-gray-500 pt-1">
           Si tu email es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
@@ -511,7 +532,7 @@ export default function LoginPage() {
         {tab === 'register' && (
           <p className="mt-8 text-xs text-gray-400">
             ¿Investigador?{' '}
-            <Link href="/register?type=investigador" className="text-blue-600 hover:underline">
+            <Link href="/register/investigador" className="text-blue-600 hover:underline">
               Registrarse con código de acceso
             </Link>
           </p>

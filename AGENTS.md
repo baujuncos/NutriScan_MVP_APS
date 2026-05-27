@@ -25,9 +25,6 @@ colaciones (pueden ser varias) y suplementos.
 Para cada momento existe una **Ingesta**, que agrupa uno o más **Ítems**.
 Cada Ítem representa un alimento consumido con una cantidad indicada por el usuario.
 
-El usuario puede indicar si el ítem es sólido (gramos), líquido (ml) o
-en polvo (gramos).
-
 Los datos de dicha ingesta pueden ser visualizados por el usuario que los ingreso.
 
 ## Regla de cálculo central

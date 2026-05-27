@@ -1,14 +1,10 @@
 import { ActivityFactor } from '@/types';
+import { ageOn, parseDateLocal } from './dates';
 
 export function calcularEdad(fechaNacimiento: string): number {
-  const hoy = new Date();
-  const nacimiento = new Date(fechaNacimiento);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const mes = hoy.getMonth() - nacimiento.getMonth();
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-  return edad;
+  const nacimiento = parseDateLocal(fechaNacimiento);
+  if (!nacimiento) return 0;
+  return ageOn(nacimiento, new Date());
 }
 
 // Harris-Benedict revised equation constants (Roza & Shizgal, 1984)

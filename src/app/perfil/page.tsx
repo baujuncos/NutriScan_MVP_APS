@@ -2,15 +2,12 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
-import Link from 'next/link';
+import EditDataPanel from '@/components/profile/EditDataPanel';
 import { calcularEdad } from '@/lib/calculations';
 import { todayAR } from '@/lib/date';
+import { getInitials } from '@/lib/initials';
 
 export const dynamic = 'force-dynamic';
-
-function getInitials(nombre: string, apellido: string): string {
-  return `${nombre.charAt(0)}${apellido.charAt(0)}`.toUpperCase();
-}
 
 function getRoleLabel(role: string): string {
   if (role === 'deportista_ucc') return 'Deportista UCC';
@@ -156,60 +153,31 @@ export default async function PerfilPage() {
           </h2>
 
           <div className="space-y-2">
+            <EditDataPanel
+              isAthlete={profile.role === 'deportista_ucc'}
+              physicalCompleted={profile.physical_completed}
+            />
+
             {profile.role === 'deportista_ucc' && (
-              <Link
-                href="/encuesta-psicologica"
-                className="flex items-center justify-between p-4 rounded-xl border-l-4 transition-colors hover:bg-gray-50"
-                style={{ borderColor: '#3b82f6', backgroundColor: '#eff6ff' }}
+              <div
+                className="flex items-center justify-between p-4 rounded-xl border-l-4 opacity-60 cursor-not-allowed"
+                style={{ borderColor: '#9ca3af', backgroundColor: '#f9fafb' }}
+                aria-disabled="true"
+                title="Disponible próximamente"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth={2}>
+                  <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center flex-shrink-0">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#6b7280" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {profile.psychological_completed ? 'Repetir Valoración Psicológica' : 'Completar Valoración Psicológica'}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">Escala Likert · 25 ítems</p>
+                    <p className="text-sm font-semibold text-gray-700">Repetir valoración psicológica</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Disponible próximamente</p>
                   </div>
                 </div>
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-400 flex-shrink-0">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                </svg>
-              </Link>
-            )}
-
-            <Link
-              href="/perfil-fisico"
-              className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${profile.physical_completed ? 'bg-green-100' : 'bg-gray-200'}`}>
-                  {profile.physical_completed ? (
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#16a34a" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#6b7280" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Editar datos físicos</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {physicalData
-                      ? `${physicalData.peso_kg}kg · ${physicalData.altura_cm}cm · ${Math.round(physicalData.get_kcal ?? 0)} kcal/día`
-                      : 'Información básica · 6 ítems'}
-                  </p>
-                </div>
               </div>
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} className="text-gray-400 flex-shrink-0">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-            </Link>
+            )}
           </div>
         </div>
 
