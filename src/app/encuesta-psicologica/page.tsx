@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
+import OnboardingProgress from '@/components/onboarding/OnboardingProgress';
 
 const PREGUNTAS = [
   'Suelo tener problemas para concentrarme mientras compito.',
@@ -42,6 +44,36 @@ export default function EncuestaPsicologicaPage() {
   const [respuestas, setRespuestas] = useState<(number | null)[]>(Array(PREGUNTAS.length).fill(null));
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backHref, setBackHref] = useState('/perfil-academico');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!cancelled && profile?.role && profile.role !== 'deportista_ucc') {
+        setBackHref('/perfil-fisico');
+      }
+      const { data: existing } = await supabase
+        .from('psychological_surveys')
+        .select('respuestas')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!cancelled && existing?.respuestas?.length === PREGUNTAS.length) {
+        setRespuestas(existing.respuestas as number[]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   const handleSelect = (idx: number, value: number) => {
     const updated = [...respuestas];
@@ -109,15 +141,13 @@ export default function EncuestaPsicologicaPage() {
     <main className="flex flex-col items-center px-4 py-10">
       <div className="w-full max-w-2xl rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-700 text-sm font-bold text-white">
-              3
-            </div>
-            <span className="text-sm text-gray-500">Fase 3 de 3</span>
-            <div className="flex-1 ml-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-700 rounded-full" style={{ width: '100%' }} />
-            </div>
-          </div>
+          <OnboardingProgress step={3} />
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-3"
+          >
+            ← Volver a la fase anterior
+          </Link>
           <h2 className="text-2xl font-bold text-gray-900">Encuesta Psicológica Deportiva</h2>
           <p className="mt-1 text-sm text-gray-500">
             Responde cada afirmación en una escala del 0 al 5, donde 0 es &quot;Nunca&quot; y 5 es &quot;Siempre&quot;.
