@@ -39,6 +39,7 @@ function LeftPanel() {
 
       <div className="flex items-center gap-3 z-10">
         <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10" />
+        {/* Fondo oscuro: logo de color */}
         <img src="/tituloNutriScan.png" alt="NutriScan" className="h-8" />
       </div>
 
@@ -387,8 +388,9 @@ export default function LoginPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 sm:px-12 py-12 min-h-screen">
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <img src="/logo.png" alt="Logo NutriScan" className="w-9 h-9 rounded-xl bg-blue-700 text-white" />
-          <img src="/tituloNutriScan.png" alt="NutriScan" className="h-7" />
+          <img src="/logo.png" alt="Logo NutriScan" className="w-9 h-9 text-white" />
+          {/* Fondo blanco: logo negro */}
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-7" />
         </div>
 
         <div className="flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
