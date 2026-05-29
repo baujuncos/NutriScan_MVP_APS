@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { ATHLETE_ROLE } from '@/lib/researcher/athletes';
 import ExcelJS from 'exceljs';
 
 type ProfileRow = {
@@ -93,7 +94,9 @@ export async function generateExcelAction(
   if (userIds.length === 0) return { error: 'Sin usuarios seleccionados' };
 
   const [profilesRes, physRes, acadRes, survRes, ingeRes, hidraRes] = await Promise.all([
-    supabase.from('profiles').select('user_id, nombre, apellido, email, role, created_at').in('user_id', userIds).order('created_at', { ascending: false }),
+    // Defense in depth: only ATHLETES can ever be exported, regardless of the
+    // ids the client sent. Private/researcher users are excluded server-side.
+    supabase.from('profiles').select('user_id, nombre, apellido, email, role, created_at').in('user_id', userIds).eq('role', ATHLETE_ROLE).order('created_at', { ascending: false }),
     supabase.from('physical_data').select('user_id, peso_kg, altura_cm, fecha_nacimiento, sexo, factor_actividad, tmb, get_kcal, proteinas_g, carbohidratos_g, grasas_g').in('user_id', userIds),
     supabase.from('academic_data').select('user_id, carrera, anio, deporte, posicion, frecuencia_practicas_semana, horas_practica, frecuencia_competencias').in('user_id', userIds),
     supabase.from('psychological_surveys').select('user_id, completed_at').in('user_id', userIds),
@@ -102,13 +105,18 @@ export async function generateExcelAction(
   ]);
 
   const profiles = (profilesRes.data ?? []) as ProfileRow[];
-  const physMap = new Map(((physRes.data ?? []) as PhysicalRow[]).map((p) => [p.user_id, p]));
-  const acadMap = new Map(((acadRes.data ?? []) as AcademicRow[]).map((a) => [a.user_id, a]));
-  const survMap = new Map(((survRes.data ?? []) as SurveyRow[]).map((s) => [s.user_id, s]));
+  if (profiles.length === 0) return { error: 'Sin deportistas para exportar' };
+
+  // Only build data for the athlete ids that survived the role filter.
+  const athleteIds = new Set(profiles.map((p) => p.user_id));
+  const physMap = new Map(((physRes.data ?? []) as PhysicalRow[]).filter((p) => athleteIds.has(p.user_id)).map((p) => [p.user_id, p]));
+  const acadMap = new Map(((acadRes.data ?? []) as AcademicRow[]).filter((a) => athleteIds.has(a.user_id)).map((a) => [a.user_id, a]));
+  const survMap = new Map(((survRes.data ?? []) as SurveyRow[]).filter((s) => athleteIds.has(s.user_id)).map((s) => [s.user_id, s]));
 
   // userId → fecha → tipoIngesta → MacroTuple
   const ingeByUser = new Map<string, Map<string, Map<string, MacroTuple>>>();
   for (const ing of (ingeRes.data ?? []) as IngestaRow[]) {
+    if (!athleteIds.has(ing.id_usuario)) continue;
     if (!ingeByUser.has(ing.id_usuario)) ingeByUser.set(ing.id_usuario, new Map());
     const byDate = ingeByUser.get(ing.id_usuario)!;
     if (!byDate.has(ing.fecha)) byDate.set(ing.fecha, new Map());
@@ -123,16 +131,19 @@ export async function generateExcelAction(
   // userId_fecha → ml total
   const hidraMap = new Map<string, number>();
   for (const h of (hidraRes.data ?? []) as HidraRow[]) {
+    if (!athleteIds.has(h.id_usuario)) continue;
     hidraMap.set(`${h.id_usuario}_${h.fecha}`, Number(h.ml_total) || 0);
   }
 
   // Union of all dates per user (ingestas + hidratación)
   const datesByUser = new Map<string, Set<string>>();
   for (const ing of (ingeRes.data ?? []) as IngestaRow[]) {
+    if (!athleteIds.has(ing.id_usuario)) continue;
     if (!datesByUser.has(ing.id_usuario)) datesByUser.set(ing.id_usuario, new Set());
     datesByUser.get(ing.id_usuario)!.add(ing.fecha);
   }
   for (const h of (hidraRes.data ?? []) as HidraRow[]) {
+    if (!athleteIds.has(h.id_usuario)) continue;
     if (!datesByUser.has(h.id_usuario)) datesByUser.set(h.id_usuario, new Set());
     datesByUser.get(h.id_usuario)!.add(h.fecha);
   }
@@ -151,7 +162,7 @@ export async function generateExcelAction(
   const r1 = ws.getRow(1);
   r1.height = 36;
   const titleCell = r1.getCell(1);
-  titleCell.value = 'NutriScan — Informe de Datos';
+  titleCell.value = 'NutriScan — Informe de Deportistas';
   titleCell.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' }, name: 'Calibri' };
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A3A5C' } };
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -161,7 +172,7 @@ export async function generateExcelAction(
   const r2 = ws.getRow(2);
   r2.height = 20;
   const subCell = r2.getCell(1);
-  subCell.value = `Generado el ${new Date().toLocaleDateString('es-AR')}  ·  ${profiles.length} usuario(s) seleccionado(s)`;
+  subCell.value = `Generado el ${new Date().toLocaleDateString('es-AR')}  ·  ${profiles.length} deportista(s)`;
   subCell.font = { italic: true, size: 10, color: { argb: 'FF475569' }, name: 'Calibri' };
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F6FF' } };
   subCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -297,7 +308,7 @@ export async function generateExcelAction(
       surv?.completed_at?.slice(0, 10) ?? '',
     ];
 
-    const dates = [...(datesByUser.get(p.user_id) ?? new Set())].sort();
+    const dates = [...(datesByUser.get(p.user_id) ?? new Set<string>())].sort();
     const blockStart = ri;
     const blockSize = Math.max(1, dates.length);
 
