@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Input from '@/components/ui/Input';
 
 const UNIDADES_ACADEMICAS = [
   'Arquitectura y Diseño',
@@ -58,7 +59,8 @@ const FRECUENCIA_COMPETENCIAS_OPTIONS = [
   'Una vez por mes',
 ];
 
-const MAX_ANIO = 5;
+const MIN_YEAR = 1990;
+const CURRENT_YEAR = new Date().getFullYear();
 
 const schema = z.object({
   unidad_academica: z.string().min(1, 'Selecciona tu unidad académica'),
@@ -151,8 +153,8 @@ export default function AcademicForm({ initialData, onSaved, submitLabel }: Acad
     const frecuenciaPracticas = parseInt(data.frecuencia_practicas_semana, 10);
     const horasPractica = parseFloat(data.horas_practica);
 
-    if (isNaN(anio) || anio < 1 || anio > MAX_ANIO) {
-      setError('anio', { message: 'Año inválido' });
+    if (isNaN(anio) || anio < MIN_YEAR || anio > CURRENT_YEAR) {
+      setError('anio', { message: `Año inválido (entre ${MIN_YEAR} y ${CURRENT_YEAR})` });
       return;
     }
     if (data.deporte !== 'hockey' && data.deporte !== 'basquet') {
@@ -258,18 +260,14 @@ export default function AcademicForm({ initialData, onSaved, submitLabel }: Acad
         {...register('carrera')}
       />
 
-      <Select
+      <Input
         id="anio"
         label="Año de cursada"
         error={errors.anio?.message}
-        options={[
-          { value: '', label: 'Selecciona el año' },
-          { value: '1', label: '1° Año' },
-          { value: '2', label: '2° Año' },
-          { value: '3', label: '3° Año' },
-          { value: '4', label: '4° Año' },
-          { value: '5', label: '5° Año' },
-        ]}
+        type="number"
+        min={MIN_YEAR}
+        max={CURRENT_YEAR}
+        step={1}
         {...register('anio')}
       />
 

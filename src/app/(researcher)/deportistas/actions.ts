@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { ATHLETE_ROLE } from '@/lib/researcher/athletes';
+import { getWeekWindow } from '@/lib/researcher/compliance';
 import ExcelJS from 'exceljs';
 
 type ProfileRow = {
@@ -390,4 +391,195 @@ export async function generateExcelAction(
 
   const buffer = await wb.xlsx.writeBuffer();
   return { xlsx: Buffer.from(buffer as ArrayBuffer).toString('base64') };
+}
+
+// ─── Athlete Detail ──────────────────────────────────────────────────────────
+
+export interface MealItem {
+  nombre: string;
+  cantidad: number;
+  kcal: number;
+}
+
+export interface IngestaDetail {
+  id_ingesta: number;
+  tipo: string;
+  fecha: string;
+  kcal_total: number;
+  items: MealItem[];
+}
+
+export interface WeeklyMealDay {
+  day: string;   // 'Lun'|'Mar'|'Mié'|'Jue'|'Vie'|'Sáb'|'Dom'
+  fecha: string; // YYYY-MM-DD
+  count: number; // ingestas that day
+}
+
+export interface PsychDimension {
+  dimension: string;
+  value: number; // 0–5 average
+}
+
+export interface AthleteDetail {
+  user_id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  physical: {
+    peso_kg: number | null;
+    altura_cm: number | null;
+    fecha_nacimiento: string | null;
+    sexo: string | null;
+    factor_actividad: number | null;
+    tmb: number | null;
+    get_kcal: number | null;
+    proteinas_g: number | null;
+    carbohidratos_g: number | null;
+    grasas_g: number | null;
+  } | null;
+  academic: {
+    unidad_academica: string | null;
+    carrera: string | null;
+    anio: number | null;
+    deporte: string | null;
+    posicion: string | null;
+    frecuencia_practicas_semana: number | null;
+    horas_practica: number | null;
+    frecuencia_competencias: string | null;
+  } | null;
+  psychDimensions: PsychDimension[];
+  psychScore: number | null; // mean of all 25 answers × 20
+  weeklyMeals: WeeklyMealDay[];
+  recentIngestas: IngestaDetail[];
+}
+
+const PSYCH_DIMS = ['Confianza', 'Concentración', 'Ansiedad', 'Resiliencia', 'Motivación'];
+const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+export async function getAthleteDetailAction(
+  athleteId: string
+): Promise<AthleteDetail | { error: string }> {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'No autenticado' };
+
+  const { data: myProfile } = await supabase
+    .from('profiles').select('role').eq('user_id', user.id).single();
+  if (!myProfile || (myProfile.role !== 'investigador' && myProfile.role !== 'administrador')) {
+    return { error: 'Acceso denegado' };
+  }
+
+  const { data: athleteProfile } = await supabase
+    .from('profiles')
+    .select('user_id, nombre, apellido, email, role')
+    .eq('user_id', athleteId)
+    .eq('role', ATHLETE_ROLE)
+    .single();
+  if (!athleteProfile) return { error: 'Deportista no encontrado' };
+
+  const now = new Date();
+  const week = getWeekWindow(now);
+  const tz = 'America/Argentina/Buenos_Aires';
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString('en-CA', { timeZone: tz });
+
+  const [physRes, acadRes, survRes, weekIngeRes, recentIngeRes] = await Promise.all([
+    supabase
+      .from('physical_data')
+      .select('peso_kg, altura_cm, fecha_nacimiento, sexo, factor_actividad, tmb, get_kcal, proteinas_g, carbohidratos_g, grasas_g')
+      .eq('user_id', athleteId)
+      .single(),
+    supabase
+      .from('academic_data')
+      .select('unidad_academica, carrera, anio, deporte, posicion, frecuencia_practicas_semana, horas_practica, frecuencia_competencias')
+      .eq('user_id', athleteId)
+      .single(),
+    supabase
+      .from('psychological_surveys')
+      .select('respuestas')
+      .eq('user_id', athleteId)
+      .single(),
+    supabase
+      .from('ingestas')
+      .select('tipo, fecha')
+      .eq('id_usuario', athleteId)
+      .gte('fecha', week.monday)
+      .lte('fecha', week.today),
+    supabase
+      .from('ingestas')
+      .select(`id_ingesta, tipo, fecha, kcal_total, items(id_item, cantidad, kcal, alimentos(nombre))`)
+      .eq('id_usuario', athleteId)
+      .in('fecha', [todayStr, yesterdayStr])
+      .order('fecha', { ascending: false })
+      .order('tipo', { ascending: true }),
+  ]);
+
+  // ── Psychological dimensions ───────────────────────────────────────────────
+  const respuestas: number[] = (survRes.data?.respuestas as number[] | null) ?? [];
+  const psychDimensions: PsychDimension[] = PSYCH_DIMS.map((dim, i) => {
+    const slice = respuestas.slice(i * 5, i * 5 + 5);
+    const avg = slice.length > 0 ? slice.reduce((s, v) => s + v, 0) / slice.length : 0;
+    return { dimension: dim, value: Math.round(avg * 100) / 100 };
+  });
+  const psychScore =
+    respuestas.length > 0
+      ? Math.round((respuestas.reduce((s, v) => s + v, 0) / respuestas.length) * 20 * 10) / 10
+      : null;
+
+  // ── Weekly meal counts by day ──────────────────────────────────────────────
+  const countByDate = new Map<string, number>();
+  for (const ing of weekIngeRes.data ?? []) {
+    const r = ing as { tipo: string; fecha: string };
+    countByDate.set(r.fecha, (countByDate.get(r.fecha) ?? 0) + 1);
+  }
+
+  const weeklyMeals: WeeklyMealDay[] = [];
+  const monday = new Date(week.monday + 'T00:00:00');
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const fecha = d.toLocaleDateString('en-CA');
+    weeklyMeals.push({
+      day: DAY_LABELS[d.getDay()],
+      fecha,
+      count: countByDate.get(fecha) ?? 0,
+    });
+  }
+
+  // ── Recent ingestas (today + yesterday) ──────────────────────────────────
+  type RawIngesta = {
+    id_ingesta: number;
+    tipo: string;
+    fecha: string;
+    kcal_total: number;
+    items: { id_item: number; cantidad: number; kcal: number; alimentos: { nombre: string } | null }[];
+  };
+
+  const recentIngestas: IngestaDetail[] = ((recentIngeRes.data ?? []) as unknown as RawIngesta[]).map((ing) => ({
+    id_ingesta: ing.id_ingesta,
+    tipo: ing.tipo,
+    fecha: ing.fecha,
+    kcal_total: Number(ing.kcal_total) || 0,
+    items: (ing.items ?? []).map((it) => ({
+      nombre: it.alimentos?.nombre ?? 'Alimento desconocido',
+      cantidad: Number(it.cantidad) || 0,
+      kcal: Number(it.kcal) || 0,
+    })),
+  }));
+
+  return {
+    user_id: athleteProfile.user_id,
+    nombre: athleteProfile.nombre,
+    apellido: athleteProfile.apellido,
+    email: athleteProfile.email,
+    physical: physRes.data ?? null,
+    academic: acadRes.data ?? null,
+    psychDimensions,
+    psychScore,
+    weeklyMeals,
+    recentIngestas,
+  };
 }

@@ -3,25 +3,18 @@
 import { useState } from 'react';
 import { generateExcelAction } from './actions';
 
-type AthleteOption = {
-  user_id: string;
-  nombre: string;
-  apellido: string;
-};
+interface Props {
+  selectedIds: string[];
+}
 
-/**
- * Compact export control: lets a researcher download the full ExcelJS report
- * for all athletes (or none selected → all). Only athlete data is ever
- * exported — the server action re-filters by role as a safeguard.
- */
-export default function ExportPanel({ athletes }: { athletes: AthleteOption[] }) {
+export default function ExportPanel({ selectedIds }: Props) {
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
-    if (athletes.length === 0 || loading) return;
+    if (selectedIds.length === 0 || loading) return;
     setLoading(true);
     try {
-      const result = await generateExcelAction(athletes.map((a) => a.user_id));
+      const result = await generateExcelAction(selectedIds);
       if ('error' in result) {
         alert(`Error: ${result.error}`);
         return;
@@ -52,10 +45,12 @@ export default function ExportPanel({ athletes }: { athletes: AthleteOption[] })
     }
   }
 
+  if (selectedIds.length === 0) return null;
+
   return (
     <button
       onClick={handleExport}
-      disabled={athletes.length === 0 || loading}
+      disabled={loading}
       className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
     >
       {loading ? (
@@ -71,7 +66,7 @@ export default function ExportPanel({ athletes }: { athletes: AthleteOption[] })
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
-          Descargar informe
+          Descargar informe ({selectedIds.length})
         </>
       )}
     </button>

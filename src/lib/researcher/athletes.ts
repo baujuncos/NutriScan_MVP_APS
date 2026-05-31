@@ -33,6 +33,9 @@ export interface AthleteRecord {
   deporte: Deporte | null;
   posicion: string | null;
   get_kcal: number | null;
+  unidad_academica: string | null;
+  carrera: string | null;
+  anio: number | null;
   /** Weekly compliance %, 0–100. */
   compliance: number;
 }
@@ -92,7 +95,7 @@ export async function getAthleteData(now: Date): Promise<AthleteData> {
 
   const [physRes, acadRes, ingeRes] = await Promise.all([
     supabase.from('physical_data').select('user_id, sexo, get_kcal').in('user_id', ids),
-    supabase.from('academic_data').select('user_id, deporte, posicion').in('user_id', ids),
+    supabase.from('academic_data').select('user_id, deporte, posicion, unidad_academica, carrera, anio').in('user_id', ids),
     supabase
       .from('ingestas')
       .select('id_usuario, tipo, fecha')
@@ -107,7 +110,7 @@ export async function getAthleteData(now: Date): Promise<AthleteData> {
   const acadMap = new Map(
     (acadRes.data ?? []).map((a) => [
       a.user_id,
-      a as { user_id: string; deporte: Deporte | null; posicion: string | null },
+      a as { user_id: string; deporte: Deporte | null; posicion: string | null; unidad_academica: string | null; carrera: string | null; anio: number | null },
     ]),
   );
 
@@ -131,6 +134,9 @@ export async function getAthleteData(now: Date): Promise<AthleteData> {
       deporte: acad?.deporte ?? null,
       posicion: acad?.posicion ?? null,
       get_kcal: phys?.get_kcal ?? null,
+      unidad_academica: acad?.unidad_academica ?? null,
+      carrera: acad?.carrera ?? null,
+      anio: acad?.anio ?? null,
       compliance: athleteWeeklyCompliance(mealsByUser.get(p.user_id) ?? [], week),
     };
   });
