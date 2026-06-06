@@ -233,7 +233,7 @@ export default function RegisterForm() {
               </p>
             )}
 
-            <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2 bg-blue-700 hover:bg-blue-800 text-white">
+            <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2">
               {isInvestigador ? 'Acceder como Investigador' : 'Crear Cuenta'}
             </Button>
           </form>

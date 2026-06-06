@@ -109,9 +109,13 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60"
+            className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+              boxShadow: '0 0 0 1px rgba(59,130,246,0.18), 0 8px 24px rgba(59,130,246,0.18), 0 0 22px rgba(34,197,94,0.14)',
+            }}
           >
-            {loading ? 'Guardando...' : 'Guardar contraseña →'}
+            {loading ? 'Guardando...' : 'Guardar contraseña'}
           </button>
         </form>
       </div>

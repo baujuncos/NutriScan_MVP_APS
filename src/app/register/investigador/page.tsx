@@ -70,8 +70,8 @@ export default function InvestigadorCodePage() {
               required
             />
 
-            <Button type="submit" size="lg" loading={loading} className="w-full mt-2 bg-blue-700 hover:bg-blue-800 text-white">
-              Continuar →
+            <Button type="submit" size="lg" loading={loading} className="w-full mt-2">
+              Continuar
             </Button>
           </form>
 

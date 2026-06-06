@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -31,6 +31,12 @@ const registerSchema = z
 
 type RegisterData = z.infer<typeof registerSchema>;
 type LoginData = z.infer<typeof loginSchema>;
+type ProviderHintResponse = { hint?: 'google_only' | 'unknown' };
+
+const gradientSubmitButtonStyle = {
+  backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+  boxShadow: '0 0 0 1px rgba(59,130,246,0.18), 0 8px 24px rgba(59,130,246,0.18), 0 0 22px rgba(34,197,94,0.14)',
+} as const;
 
 
 
@@ -176,9 +182,10 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60"
+          style={gradientSubmitButtonStyle}
         >
-          {loading ? 'Enviando...' : 'Enviar enlace →'}
+          {loading ? 'Enviando...' : 'Enviar enlace'}
         </button>
       </form>
     </div>
@@ -191,10 +198,26 @@ function LoginForm() {
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [providerHint, setProviderHint] = useState<'google_only' | 'unknown' | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
   });
+
+  const showGoogleAttention = Boolean(serverError || providerHint === 'google_only');
+
+  useEffect(() => {
+    if (!showGoogleAttention) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setServerError('');
+      setProviderHint(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showGoogleAttention]);
 
   const onSubmit = async (data: LoginData) => {
     setServerError('');
@@ -203,12 +226,48 @@ function LoginForm() {
       password: data.password,
     });
     if (error) {
+      try {
+        const res = await fetch('/api/auth/provider-hint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: data.email }),
+        });
+        const json = (await res.json().catch(() => ({}))) as ProviderHintResponse;
+
+        if (json.hint === 'google_only') {
+          setServerError('Esta cuenta fue creada con Google. Ingresá con Google o usá "¿Olvidaste tu contraseña?" para crear una contraseña.');
+          return;
+        }
+      } catch {
+        // Fall back to the generic message.
+      }
+
       setServerError('Credenciales inválidas. Verificá tu email y contraseña.');
       return;
     }
     router.push('/');
     router.refresh();
   };
+
+  async function checkProviderHintForEmail(email: string) {
+    if (showGoogleAttention) {
+      return;
+    }
+
+    if (!email || !email.includes('@')) return;
+    try {
+      const res = await fetch('/api/auth/provider-hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.hint === 'google_only') setProviderHint('google_only');
+      else setProviderHint('unknown');
+    } catch {
+      setProviderHint('unknown');
+    }
+  }
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -236,7 +295,12 @@ function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition-colors disabled:opacity-60 mb-4"
+        className={`w-full flex items-center justify-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-500 ease-out disabled:opacity-60 mb-4 ${showGoogleAttention ? 'border-transparent text-white scale-[1.01]' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+        style={showGoogleAttention ? {
+          backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+          boxShadow: '0 0 0 1px rgba(59,130,246,0.22), 0 0 24px rgba(59,130,246,0.28), 0 0 32px rgba(34,197,94,0.22)',
+          textShadow: '0 1px 0 rgba(0,0,0,0.12)',
+        } : undefined}
       >
         <GoogleIcon />
         {googleLoading ? 'Redirigiendo...' : 'Continuar con Google'}
@@ -261,9 +325,17 @@ function LoginForm() {
             type="email"
             placeholder="juanperez@hotmail.com"
             {...register('email')}
+            onBlur={(e) => checkProviderHintForEmail(e.currentTarget.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+          <div
+            className={`overflow-hidden transition-all duration-500 ease-out ${providerHint === 'google_only' ? 'mt-2 max-h-20 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}
+          >
+            <p className="text-sm text-yellow-700">
+              Esta cuenta fue creada con Google. Ingresá con Google o usá "¿Olvidaste tu contraseña?" para crear una contraseña.
+            </p>
+          </div>
         </div>
 
         <div>
@@ -293,9 +365,10 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60 mt-2"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60 mt-2"
+          style={gradientSubmitButtonStyle}
         >
-          {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión →'}
+            {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
         </button>
       </form>
     </div>
@@ -378,7 +451,7 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
           <span className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-xs text-gray-400">
-          <span className="bg-white px-2">o con tu email</span>
+          <span className="bg-white px-2">o con tu mail</span>
         </div>
       </div>
 
@@ -439,7 +512,7 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
         />
 
         <p className="text-xs text-gray-500 pt-1">
-          Si tu email es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
+          Si tu mail es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
         </p>
 
         {serverError && (
@@ -451,9 +524,10 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60"
+          style={gradientSubmitButtonStyle}
         >
-          {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta →'}
+          {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>
       </form>
     </div>
@@ -473,7 +547,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu email!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu mail!</h2>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
             Te enviamos un enlace de confirmación. Hacé clic en el enlace para activar tu cuenta y continuar.
           </p>
