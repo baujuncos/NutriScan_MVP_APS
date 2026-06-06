@@ -172,12 +172,12 @@ export default function EncuestaPsicologicaPage() {
               key={idx}
               className="rounded-lg border border-gray-100 bg-gray-50 p-4"
             >
-              <div className="flex items-start justify-between gap-4">
-                <p className="text-sm text-gray-700 flex-1">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <p className="text-sm text-gray-700 sm:flex-1">
                   <span className="font-semibold text-blue-700">{idx + 1}. </span>
                   {pregunta}
                 </p>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
                   {[0, 1, 2, 3, 4, 5].map((val) => (
                     <button
                       key={val}
