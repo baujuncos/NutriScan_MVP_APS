@@ -88,7 +88,7 @@ export default function HidratacionCard({ initialMl }: { initialMl: number }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm">
       {/* Header row */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
             <svg width="17" height="20" viewBox="0 0 14 16" fill="#3b82f6">

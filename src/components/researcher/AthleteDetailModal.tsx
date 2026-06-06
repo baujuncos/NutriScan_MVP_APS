@@ -323,7 +323,7 @@ export default function AthleteDetailModal({ athlete, onClose }: Props) {
                             {fecha === todayStr ? 'Hoy' : 'Ayer'}
                           </span>
                           <span className="text-xs text-slate-300">·</span>
-                          <span className="text-xs text-slate-400">{fecha}</span>
+                          <span className="text-xs text-slate-400">{fecha.split('-').reverse().join('-')}</span>
                         </div>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {(ingestasByDate.get(fecha) ?? []).map((ing) => (
