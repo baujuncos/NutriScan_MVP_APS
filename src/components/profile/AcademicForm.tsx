@@ -262,7 +262,7 @@ export default function AcademicForm({ initialData, onSaved, submitLabel }: Acad
 
       <Input
         id="anio"
-        label="Año de cursada"
+        label="Año de ingreso a la facultad"
         error={errors.anio?.message}
         type="number"
         min={MIN_YEAR}
