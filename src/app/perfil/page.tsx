@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import LogoutButton from '@/components/auth/LogoutButton';
 import EditDataPanel from '@/components/profile/EditDataPanel';
+import DeleteAccountAction from '@/components/ui/DeleteAccountAction';
 import { calcularEdad } from '@/lib/calculations';
 import { todayAR } from '@/lib/date';
 import { getInitials } from '@/lib/initials';
@@ -208,6 +209,17 @@ export default async function PerfilPage() {
               subtitleColor={cumplimiento >= 80 ? 'text-green-600' : cumplimiento >= 50 ? 'text-amber-600' : 'text-red-500'}
             />
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-5">
+          <h2 className="font-semibold text-gray-900 mb-2">Eliminar cuenta</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Esta acción elimina tu cuenta y los datos asociados. Escribí <strong>eliminar</strong> para confirmarlo.
+          </p>
+          <DeleteAccountAction
+            displayName={`${profile.nombre} ${profile.apellido}`}
+            userEmail={user.email ?? ''}
+          />
         </div>
       </main>
 
