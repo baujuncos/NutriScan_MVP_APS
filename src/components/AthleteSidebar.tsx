@@ -41,9 +41,10 @@ const NAV = [
 interface Props {
   nombre: string;
   apellido: string;
+  roleLabel?: string;
 }
 
-function SidebarContent({ nombre, apellido }: Props) {
+function SidebarContent({ nombre, apellido, roleLabel }: Props) {
   const pathname = usePathname();
 
   return (
@@ -90,7 +91,7 @@ function SidebarContent({ nombre, apellido }: Props) {
             <p className="truncate text-sm font-semibold text-slate-900">
               {nombre} {apellido}
             </p>
-            <p className="truncate text-xs text-slate-400">Deportista</p>
+            <p className="truncate text-xs text-slate-400">{roleLabel ?? 'Usuario'}</p>
           </div>
         </div>
         <div className="mt-1 px-2">
@@ -101,14 +102,14 @@ function SidebarContent({ nombre, apellido }: Props) {
   );
 }
 
-export default function AthleteSidebar({ nombre, apellido }: Props) {
+export default function AthleteSidebar({ nombre, apellido, roleLabel }: Props) {
   return (
     <div className="hidden lg:block">
       <aside
         className="flex flex-col fixed left-0 top-0 bottom-0 w-64 bg-white z-40"
         style={{ boxShadow: '2px 0 8px rgba(15,23,42,0.05)' }}
       >
-        <SidebarContent nombre={nombre} apellido={apellido} />
+        <SidebarContent nombre={nombre} apellido={apellido} roleLabel={roleLabel} />
       </aside>
     </div>
   );

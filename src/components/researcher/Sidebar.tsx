@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Avatar from './Avatar';
+import DeleteAccountAction from '@/components/ui/DeleteAccountAction';
 
 interface NavItem {
   href: string;
@@ -82,9 +83,12 @@ function SidebarContent({ nombre, apellido, onNavigate }: SidebarContentProps) {
         <div className="flex items-center gap-3 rounded-xl px-2 py-2">
           <Avatar nombre={nombre} apellido={apellido} size="md" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-900">
-              {nombre} {apellido}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold text-slate-900">
+                {nombre} {apellido}
+              </p>
+              <DeleteAccountAction displayName={`${nombre} ${apellido}`} />
+            </div>
             <p className="truncate text-xs text-slate-400">Investigador</p>
           </div>
         </div>

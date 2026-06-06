@@ -179,7 +179,7 @@ export default function ElegirUsoPage() {
           loading={loading}
           onClick={handleSubmit}
         >
-          Continuar →
+          Continuar
         </Button>
       </div>
       </main>

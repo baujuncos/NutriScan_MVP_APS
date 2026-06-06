@@ -44,34 +44,52 @@ const gradientSubmitButtonStyle = {
 function LeftPanel() {
   return (
     <div
-      className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden"
-      style={{ background: 'linear-gradient(145deg, #0f2057 0%, #1a3a8a 55%, #1e4fa8 100%)' }}
+      className="hidden lg:flex lg:w-1/2 lg:sticky lg:top-0 lg:h-screen flex-col justify-between p-12 text-white relative overflow-hidden animate-gradient-shift"
+      style={{
+        backgroundImage: 'linear-gradient(125deg, #0f2057 0%, #1d4ed8 38%, #16a34a 78%, #22c55e 100%)',
+        backgroundSize: '200% 200%',
+      }}
     >
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/5" />
-      <div className="absolute top-1/3 -right-12 w-48 h-48 rounded-full bg-white/5" />
-      <div className="absolute -bottom-12 left-1/3 w-56 h-56 rounded-full bg-white/5" />
+      {/* Floating glow orbs */}
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-400/20 blur-3xl animate-float-slow" />
+      <div className="absolute top-1/2 -right-16 w-64 h-64 rounded-full bg-green-400/20 blur-3xl animate-float-slower" />
+      <div className="absolute -bottom-20 left-10 w-72 h-72 rounded-full bg-emerald-300/15 blur-3xl animate-float-slow" />
+
+      {/* Subtle grid overlay for texture */}
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+          backgroundSize: '42px 42px',
+        }}
+      />
 
       <div className="flex items-center gap-3 z-10">
-        <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10" />
-        {/* Fondo oscuro: logo de color */}
+        <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10 drop-shadow-lg" />
         <img src="/tituloNutriScan.png" alt="NutriScan" className="h-8" />
       </div>
 
       <div className="z-10 space-y-6">
-        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium ring-1 ring-white/20 shadow-lg shadow-black/10">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="animate-pulse-soft text-green-300">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
           </svg>
           UCC · Nutrición Deportiva
         </div>
 
         <div>
-          <h1 className="text-5xl font-bold leading-tight">
+          <h1 className="text-5xl font-bold leading-tight tracking-tight">
             Tu rendimiento,<br />
-            medido <span className="text-green-400">con</span>{' '}
-            <span className="text-green-400">ciencia.</span>
+            medido{' '}
+            <span
+              className="bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-shift"
+              style={{ backgroundImage: 'linear-gradient(90deg, #60a5fa 0%, #4ade80 50%, #60a5fa 100%)' }}
+            >
+              con ciencia.
+            </span>
           </h1>
-          <p className="mt-5 text-white/65 text-base leading-relaxed max-w-sm">
+          <p className="mt-5 text-white/70 text-base leading-relaxed max-w-sm">
             Registrá comidas e hidratación usando la base de datos nacional SARA2. <br />
             ¡Profesionales usarán los datos recolectados en un proyecto de investigación para conocerte mejor!
           </p>
@@ -82,9 +100,15 @@ function LeftPanel() {
             { value: '50+', label: 'Deportistas' },
             { value: '900+', label: 'Alimentos disponibles' },
             { value: '2', label: 'Equipos UCC' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center min-w-[80px]">
-              <p className="text-lg font-bold">{s.value}</p>
+          ].map((s, i) => (
+            <div
+              key={s.label}
+              className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center min-w-[80px] ring-1 ring-white/10 transition-transform duration-300 hover:-translate-y-1 hover:bg-white/15"
+              style={{ animationDelay: `${i * 120}ms` }}
+            >
+              <p className="text-lg font-bold bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, #93c5fd, #86efac)' }}>
+                {s.value}
+              </p>
               <p className="text-xs text-white/55 mt-0.5">{s.label}</p>
             </div>
           ))}
@@ -181,7 +205,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
           style={gradientSubmitButtonStyle}
         >
           {loading ? 'Enviando...' : 'Enviar enlace'}
@@ -360,7 +384,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60 mt-2"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none mt-2"
           style={gradientSubmitButtonStyle}
         >
             {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
@@ -515,7 +539,7 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-300 ease-out disabled:opacity-60"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
           style={gradientSubmitButtonStyle}
         >
           {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
@@ -564,11 +588,16 @@ export default function LoginPage() {
           <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-7" />
         </div>
 
-        <div className="flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
+        <div className="relative flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
+          <span
+            aria-hidden
+            className="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
+            style={{ transform: tab === 'login' ? 'translateX(0%)' : 'translateX(calc(100% + 0.25rem))' }}
+          />
           <button
             onClick={() => setTab('login')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-              tab === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-300 ${
+              tab === 'login' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -578,8 +607,8 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => setTab('register')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-              tab === 'register' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-300 ${
+              tab === 'register' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -589,11 +618,13 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {tab === 'login' ? (
-          <LoginForm />
-        ) : (
-          <RegisterFormInline onSuccess={() => setEmailSent(true)} />
-        )}
+        <div key={tab} className="w-full flex flex-col items-center animate-fade-slide">
+          {tab === 'login' ? (
+            <LoginForm />
+          ) : (
+            <RegisterFormInline onSuccess={() => setEmailSent(true)} />
+          )}
+        </div>
 
         {/* MODIFICACIÓN: Renderizado condicional para mostrar solo en 'register' */}
         {tab === 'register' && (

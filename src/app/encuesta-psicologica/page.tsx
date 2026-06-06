@@ -214,7 +214,7 @@ export default function EncuestaPsicologicaPage() {
             onClick={onSubmit}
             className="w-full"
           >
-            Finalizar Encuesta y Continuar →
+            Finalizar Encuesta y Continuar
           </Button>
         </div>
       </div>

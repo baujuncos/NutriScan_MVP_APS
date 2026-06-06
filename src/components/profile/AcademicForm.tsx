@@ -358,7 +358,7 @@ export default function AcademicForm({ initialData, onSaved, submitLabel }: Acad
       )}
 
       <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2">
-        {submitLabel ?? 'Guardar y Continuar →'}
+        {submitLabel ?? 'Guardar y Continuar'}
       </Button>
     </form>
   );
