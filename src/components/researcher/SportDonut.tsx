@@ -45,7 +45,7 @@ export default function SportDonut({ basquet, hockey }: SportDonutProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value: number, name: string) => [`${value} deportistas`, name]}
+              formatter={(value, name) => [`${value ?? 0} deportistas`, name ?? '']}
               contentStyle={{
                 borderRadius: 12,
                 border: '1px solid #e2e8f0',
