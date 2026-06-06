@@ -171,6 +171,15 @@ export default function PhysicalForm({ initialData, onSaved, submitLabel }: Phys
           step="0.1"
           placeholder="70"
           error={errors.peso_kg?.message}
+          onKeyDown={(e) => { if (e.key === ',') e.preventDefault(); }}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text');
+            if (text.includes(',')) {
+              e.preventDefault();
+              const fixed = text.replace(/,/g, '.');
+              document.execCommand('insertText', false, fixed);
+            }
+          }}
           {...register('peso_kg')}
         />
         <Input

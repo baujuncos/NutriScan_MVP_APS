@@ -1,6 +1,20 @@
 'use client';
 
 import { useState } from 'react';
+import { todayAR } from '@/lib/date';
+
+function formatFechaTitle(fecha: string): string {
+  if (fecha === todayAR()) return 'Hoy';
+  const [year, month, day] = fecha.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  const formatted = new Intl.DateTimeFormat('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date);
+  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
 import { addItemAction, deleteItemAction, updateItemAction } from './actions';
 import { type IngestaTipo } from '@/lib/nutrition';
 
@@ -227,7 +241,7 @@ export default function AlimentacionClient({
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-gray-900">
-            Hoy en {label}
+            {formatFechaTitle(fecha)} en {label}
           </h3>
           <span className="text-sm text-gray-400">{items.length} ítems</span>
         </div>
@@ -262,9 +276,9 @@ export default function AlimentacionClient({
                         name="cantidad"
                         value={editingCantidad}
                         onChange={(e) => setEditingCantidad(e.target.value)}
-                        min="0.1"
+                        min="1"
                         max={MAX_CANTIDAD}
-                        step="1"
+                        step="any"
                         required
                         autoFocus
                         className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-all"

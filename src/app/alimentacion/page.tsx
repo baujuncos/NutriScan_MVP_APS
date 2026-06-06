@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { INGESTA_TIPOS, formatIngestaLabel, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
 import { todayAR } from '@/lib/date';
 import AlimentacionClient from './AlimentacionClient';
+import DatePicker from './DatePicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -212,21 +213,7 @@ export default async function AlimentacionPage({
 
       {/* Date picker */}
       <div className="px-4 pb-2">
-        <form className="flex items-center gap-2">
-          <input type="hidden" name="tipo" value={selectedTipo} />
-          <input
-            name="fecha"
-            type="date"
-            defaultValue={fecha}
-            className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
-          />
-          <button
-            type="submit"
-            className="rounded-xl bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-medium transition-colors"
-          >
-            Ver
-          </button>
-        </form>
+        <DatePicker fecha={fecha} tipo={selectedTipo} />
       </div>
 
       {/* Client component: search + add + items */}
