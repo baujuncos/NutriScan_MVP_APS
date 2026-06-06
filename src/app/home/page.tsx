@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import BottomNav from '@/components/BottomNav';
 import AthleteSidebar from '@/components/AthleteSidebar';
+import { getRoleLabel } from '@/lib/roles';
 import LogoutButton from '@/components/auth/LogoutButton';
 import Link from 'next/link';
 import { type IngestaTipo } from '@/lib/nutrition';
@@ -109,7 +110,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} />
+      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} roleLabel={getRoleLabel(profile.role)} />
 
       <div className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden">
 

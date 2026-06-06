@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
 import BottomNav from '@/components/BottomNav';
 import AthleteSidebar from '@/components/AthleteSidebar';
+import { getRoleLabel } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/server';
 import { INGESTA_TIPOS, formatIngestaLabel, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
 import { todayAR } from '@/lib/date';
@@ -166,7 +167,7 @@ export default async function AlimentacionPage({
 
   return (
     <>
-      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} />
+      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} roleLabel={getRoleLabel(profile.role)} />
 
       <div className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden">
 

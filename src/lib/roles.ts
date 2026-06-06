@@ -1,5 +1,11 @@
 import { UserRole } from '@/types';
 
+export function getRoleLabel(role: string): string {
+  if (role === 'deportista_ucc') return 'Deportista UCC';
+  if (role === 'particular') return 'Usuario Particular';
+  return role;
+}
+
 export function determineRoleFromEmail(email: string): UserRole {
   const domain = email.split('@')[1]?.toLowerCase();
   if (domain === 'ucc.edu.ar') {

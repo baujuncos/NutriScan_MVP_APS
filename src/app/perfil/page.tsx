@@ -8,14 +8,9 @@ import DeleteAccountAction from '@/components/ui/DeleteAccountAction';
 import { calcularEdad } from '@/lib/calculations';
 import { todayAR } from '@/lib/date';
 import { getInitials } from '@/lib/initials';
+import { getRoleLabel } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
-
-function getRoleLabel(role: string): string {
-  if (role === 'deportista_ucc') return 'Deportista UCC';
-  if (role === 'particular') return 'Usuario Particular';
-  return role;
-}
 
 export default async function PerfilPage() {
   const supabase = await createClient();
@@ -69,7 +64,7 @@ export default async function PerfilPage() {
 
   return (
     <>
-      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido} />
+      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido} roleLabel={getRoleLabel(profile.role)} />
 
       <div className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden">
 
@@ -129,28 +124,18 @@ export default async function PerfilPage() {
 
           {/* Stats row */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="grid grid-cols-3 divide-x divide-gray-100">
+            <div className="grid grid-cols-4 divide-x divide-gray-100">
               <StatCell
                 value={academicData?.frecuencia_practicas_semana ? `${academicData.frecuencia_practicas_semana}x/sem` : '—'}
                 label="Frecuencia"
               />
               <StatCell value={academicData?.anio ? String(academicData.anio) : '—'} label="Ingreso" />
               <StatCell value={edad !== null ? String(edad) : '—'} label="Edad" />
+              <div className="flex flex-col items-center justify-center py-4 px-2">
+                <DeleteAccountAction displayName={`${profile.nombre} ${profile.apellido}`} userEmail={user.email ?? ''} />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h2 className="font-semibold text-gray-900 mb-2">Eliminar cuenta</h2>
-          <p className="text-sm text-gray-500 mb-4">
-            Esta acción elimina tu cuenta y los datos asociados. Escribí <strong>tu mail</strong> para confirmarlo.
-          </p>
-          <DeleteAccountAction
-            displayName={`${profile.nombre} ${profile.apellido}`}
-            userEmail={user.email ?? ''}
-          />
-        </div>
-      </main>
 
           {/* Bottom: 2 equal columns on desktop */}
           <div className="grid gap-5 lg:grid-cols-2">
