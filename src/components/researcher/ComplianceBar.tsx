@@ -50,7 +50,7 @@ export default function ComplianceBar({ data }: { data: ComplianceSegment[] }) {
           />
           <Tooltip
             cursor={{ fill: '#f1f5f9' }}
-            formatter={(value: number) => [`${value}%`, 'Cumplimiento']}
+            formatter={(value) => [`${value ?? 0}%`, 'Cumplimiento']}
             contentStyle={{
               borderRadius: 12,
               border: '1px solid #e2e8f0',
