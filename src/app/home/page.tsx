@@ -112,7 +112,7 @@ export default async function HomePage() {
     <>
       <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} roleLabel={getRoleLabel(profile.role)} />
 
-      <div className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden">
+      <div key="home" className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden animate-page-in">
 
         {/* Mobile-only header */}
         <header className="lg:hidden bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
