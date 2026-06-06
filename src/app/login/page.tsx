@@ -1,62 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
+import { strongPasswordSchema } from '@/lib/password';
+import PasswordRules from '@/components/ui/PasswordRules';
+import Input from '@/components/ui/Input';
+import AnimatedError from '@/components/ui/AnimatedError';
 import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(6, 'Mínimo 8 caracteres'),
 });
 
 const registerSchema = z
   .object({
-    nombre: z.string().min(1, 'El nombre es requerido'),
-    apellido: z.string().min(1, 'El apellido es requerido'),
+    nombre: z.string().trim().min(1, 'El nombre es requerido'),
+    apellido: z.string().trim().min(1, 'El apellido es requerido'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'Mínimo 6 caracteres'),
+    password: strongPasswordSchema,
     confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
   })
 
 type RegisterData = z.infer<typeof registerSchema>;
 type LoginData = z.infer<typeof loginSchema>;
+type ProviderHintResponse = { hint?: 'google_only' | 'unknown' };
+
+const gradientSubmitButtonStyle = {
+  backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+  boxShadow: '0 0 0 1px rgba(59,130,246,0.18), 0 8px 24px rgba(59,130,246,0.18), 0 0 22px rgba(34,197,94,0.14)',
+} as const;
 
 
 
 function LeftPanel() {
   return (
     <div
-      className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 text-white relative overflow-hidden"
-      style={{ background: 'linear-gradient(145deg, #0f2057 0%, #1a3a8a 55%, #1e4fa8 100%)' }}
+      className="hidden lg:flex lg:w-1/2 lg:sticky lg:top-0 lg:h-screen flex-col justify-between p-12 text-white relative overflow-hidden animate-gradient-shift"
+      style={{
+        backgroundImage: 'linear-gradient(125deg, #0f2057 0%, #1d4ed8 38%, #16a34a 78%, #22c55e 100%)',
+        backgroundSize: '200% 200%',
+      }}
     >
-      <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/5" />
-      <div className="absolute top-1/3 -right-12 w-48 h-48 rounded-full bg-white/5" />
-      <div className="absolute -bottom-12 left-1/3 w-56 h-56 rounded-full bg-white/5" />
+      {/* Floating glow orbs */}
+      <div className="absolute -top-24 -right-24 w-80 h-80 rounded-full bg-blue-400/20 blur-3xl animate-float-slow" />
+      <div className="absolute top-1/2 -right-16 w-64 h-64 rounded-full bg-green-400/20 blur-3xl animate-float-slower" />
+      <div className="absolute -bottom-20 left-10 w-72 h-72 rounded-full bg-emerald-300/15 blur-3xl animate-float-slow" />
+
+      {/* Subtle grid overlay for texture */}
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+          backgroundSize: '42px 42px',
+        }}
+      />
 
       <div className="flex items-center gap-3 z-10">
-        <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10" />
+        <img src="/logo.png" alt="Logo NutriScan" className="w-10 h-10 drop-shadow-lg" />
         <img src="/tituloNutriScan.png" alt="NutriScan" className="h-8" />
       </div>
 
       <div className="z-10 space-y-6">
-        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-1.5 text-sm font-medium ring-1 ring-white/20 shadow-lg shadow-black/10">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="animate-pulse-soft text-green-300">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
           </svg>
           UCC · Nutrición Deportiva
         </div>
 
         <div>
-          <h1 className="text-5xl font-bold leading-tight">
+          <h1 className="text-5xl font-bold leading-tight tracking-tight">
             Tu rendimiento,<br />
-            medido <span className="text-green-400">con</span>{' '}
-            <span className="text-green-400">ciencia.</span>
+            medido{' '}
+            <span
+              className="bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-shift"
+              style={{ backgroundImage: 'linear-gradient(90deg, #60a5fa 0%, #4ade80 50%, #60a5fa 100%)' }}
+            >
+              con ciencia.
+            </span>
           </h1>
-          <p className="mt-5 text-white/65 text-base leading-relaxed max-w-sm">
+          <p className="mt-5 text-white/70 text-base leading-relaxed max-w-sm">
             Registrá comidas e hidratación usando la base de datos nacional SARA2. <br />
             ¡Profesionales usarán los datos recolectados en un proyecto de investigación para conocerte mejor!
           </p>
@@ -67,9 +100,15 @@ function LeftPanel() {
             { value: '50+', label: 'Deportistas' },
             { value: '900+', label: 'Alimentos disponibles' },
             { value: '2', label: 'Equipos UCC' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center min-w-[80px]">
-              <p className="text-lg font-bold">{s.value}</p>
+          ].map((s, i) => (
+            <div
+              key={s.label}
+              className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 text-center min-w-[80px] ring-1 ring-white/10 transition-transform duration-300 hover:-translate-y-1 hover:bg-white/15"
+              style={{ animationDelay: `${i * 120}ms` }}
+            >
+              <p className="text-lg font-bold bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(90deg, #93c5fd, #86efac)' }}>
+                {s.value}
+              </p>
               <p className="text-xs text-white/55 mt-0.5">{s.label}</p>
             </div>
           ))}
@@ -97,15 +136,111 @@ function GoogleIcon() {
   );
 }
 
+function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
+  const supabase = createClient();
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    setLoading(false);
+    if (resetError) {
+      setError('No se pudo enviar el email. Verificá la dirección ingresada.');
+      return;
+    }
+    setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="w-full max-w-sm text-center">
+        <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Revisá tu email</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Si existe una cuenta con <strong>{email}</strong>, recibirás un enlace para restablecer tu contraseña.
+        </p>
+        <button onClick={onBack} className="text-blue-600 font-medium hover:underline text-sm">
+          ← Volver al inicio de sesión
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-sm">
+      <button onClick={onBack} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+        </svg>
+        Volver
+      </button>
+      <h2 className="text-2xl font-bold text-gray-900 mb-1">¿Olvidaste tu contraseña?</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Ingresá tu email y te enviaremos un enlace para restablecerla.
+      </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+          <input
+            type="email"
+            placeholder="juanperez@hotmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
+          />
+        </div>
+        <AnimatedError message={error} className="mb-0" />
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          style={gradientSubmitButtonStyle}
+        >
+          {loading ? 'Enviando...' : 'Enviar enlace'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function LoginForm() {
   const router = useRouter();
   const supabase = createClient();
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [providerHint, setProviderHint] = useState<'google_only' | 'unknown' | null>(null);
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
   });
+
+  const showGoogleAttention = Boolean(serverError || providerHint === 'google_only');
+
+  useEffect(() => {
+    if (!showGoogleAttention) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setServerError('');
+      setProviderHint(null);
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showGoogleAttention]);
 
   const onSubmit = async (data: LoginData) => {
     setServerError('');
@@ -114,12 +249,48 @@ function LoginForm() {
       password: data.password,
     });
     if (error) {
+      try {
+        const res = await fetch('/api/auth/provider-hint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: data.email }),
+        });
+        const json = (await res.json().catch(() => ({}))) as ProviderHintResponse;
+
+        if (json.hint === 'google_only') {
+          setServerError('Esta cuenta fue creada con Google. Ingresá con Google o usá "¿Olvidaste tu contraseña?" para crear una contraseña.');
+          return;
+        }
+      } catch {
+        // Fall back to the generic message.
+      }
+
       setServerError('Credenciales inválidas. Verificá tu email y contraseña.');
       return;
     }
     router.push('/');
     router.refresh();
   };
+
+  async function checkProviderHintForEmail(email: string) {
+    if (showGoogleAttention) {
+      return;
+    }
+
+    if (!email || !email.includes('@')) return;
+    try {
+      const res = await fetch('/api/auth/provider-hint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.hint === 'google_only') setProviderHint('google_only');
+      else setProviderHint('unknown');
+    } catch {
+      setProviderHint('unknown');
+    }
+  }
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
@@ -133,6 +304,10 @@ function LoginForm() {
     }
   };
 
+  if (showForgot) {
+    return <ForgotPasswordForm onBack={() => setShowForgot(false)} />;
+  }
+
   return (
     <div className="w-full max-w-sm">
       <div className="mb-7">
@@ -143,7 +318,12 @@ function LoginForm() {
         type="button"
         onClick={handleGoogleLogin}
         disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 transition-colors disabled:opacity-60 mb-4"
+        className={`w-full flex items-center justify-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-500 ease-out disabled:opacity-60 mb-4 ${showGoogleAttention ? 'border-transparent text-white scale-[1.01]' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'}`}
+        style={showGoogleAttention ? {
+          backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+          boxShadow: '0 0 0 1px rgba(59,130,246,0.22), 0 0 24px rgba(59,130,246,0.28), 0 0 32px rgba(34,197,94,0.22)',
+          textShadow: '0 1px 0 rgba(0,0,0,0.12)',
+        } : undefined}
       >
         <GoogleIcon />
         {googleLoading ? 'Redirigiendo...' : 'Continuar con Google'}
@@ -168,9 +348,17 @@ function LoginForm() {
             type="email"
             placeholder="juanperez@hotmail.com"
             {...register('email')}
+            onBlur={(e) => checkProviderHintForEmail(e.currentTarget.value)}
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
+          <div
+            className={`overflow-hidden transition-all duration-500 ease-out ${providerHint === 'google_only' ? 'mt-2 max-h-20 opacity-100 translate-y-0' : 'max-h-0 opacity-0 -translate-y-1'}`}
+          >
+            <p className="text-sm text-yellow-700">
+              Esta cuenta fue creada con Google. Ingresá con Google o usá "¿Olvidaste tu contraseña?" para crear una contraseña.
+            </p>
+          </div>
         </div>
 
         <div>
@@ -178,32 +366,28 @@ function LoginForm() {
             <label htmlFor="login-password" className="text-sm font-medium text-gray-700">
               Contraseña
             </label>
-            <button type="button" className="text-xs text-blue-600 hover:underline">
+            <button type="button" onClick={() => setShowForgot(true)} className="text-xs text-blue-600 hover:underline">
               ¿Olvidaste tu contraseña?
             </button>
           </div>
-          <input
+          <Input
             id="login-password"
             type="password"
             placeholder="••••••••"
+            error={errors.password?.message}
             {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
         </div>
 
-        {serverError && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">
-            {serverError}
-          </div>
-        )}
+        <AnimatedError message={serverError} className="mb-0" />
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60 mt-2"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none mt-2"
+          style={gradientSubmitButtonStyle}
         >
-          {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión →'}
+            {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
         </button>
       </form>
     </div>
@@ -215,25 +399,41 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
   const [serverError, setServerError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<RegisterData>({
+  const { register, handleSubmit, watch, setError, formState: { errors, isSubmitting } } = useForm<RegisterData>({
     resolver: zodResolver(registerSchema),
+    mode: 'onTouched',
   });
+
+  const passwordValue = watch('password') ?? '';
 
   const onSubmit = async (data: RegisterData) => {
     setServerError('');
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        data: { nombre: data.nombre, apellido: data.apellido },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setServerError(error.message);
-      return;
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          nombre: data.nombre,
+          apellido: data.apellido,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setError('email', { message: 'Ya existe una cuenta con este email.' });
+        return;
+      }
+      if (!res.ok) {
+        if (json?.field === 'password') setError('password', { message: json.message });
+        else if (json?.field === 'email') setError('email', { message: json.message });
+        else setServerError(json?.message ?? 'No pudimos crear la cuenta.');
+        return;
+      }
+      onSuccess();
+    } catch {
+      setServerError('Error de conexión. Intentá de nuevo.');
     }
-    onSuccess();
   };
 
   const handleGoogleRegister = async () => {
@@ -270,7 +470,7 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
           <span className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center text-xs text-gray-400">
-          <span className="bg-white px-2">o con tu email</span>
+          <span className="bg-white px-2">o con tu mail</span>
         </div>
       </div>
 
@@ -310,43 +510,39 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Contraseña</label>
-          <input
+          <Input
+            id="register-password"
+            label="Contraseña"
             type="password"
             placeholder="••••••••"
+            error={errors.password?.message}
             {...register('password')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
-          {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>}
+          <PasswordRules value={passwordValue} className="mt-2" />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirmar contraseña</label>
-          <input
-            type="password"
-            placeholder="••••••••"
-            {...register('confirmPassword')}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
-          />
-          {errors.confirmPassword && <p className="mt-1 text-xs text-red-500">{errors.confirmPassword.message}</p>}
-        </div>
+        <Input
+          id="register-confirm"
+          label="Confirmar contraseña"
+          type="password"
+          placeholder="••••••••"
+          error={errors.confirmPassword?.message}
+          {...register('confirmPassword')}
+        />
 
         <p className="text-xs text-gray-500 pt-1">
-          Si tu email es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
+          Si tu mail es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
         </p>
 
-        {serverError && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">
-            {serverError}
-          </div>
-        )}
+        <AnimatedError message={serverError} className="mb-0" />
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold py-3.5 text-sm transition-colors disabled:opacity-60"
+          className="w-full rounded-xl px-4 py-3.5 text-sm font-semibold text-white transition-all duration-700 ease-out hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 active:duration-150 disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-none"
+          style={gradientSubmitButtonStyle}
         >
-          {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta →'}
+          {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
         </button>
       </form>
     </div>
@@ -366,7 +562,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu email!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu mail!</h2>
           <p className="text-gray-600 mb-6 text-sm leading-relaxed">
             Te enviamos un enlace de confirmación. Hacé clic en el enlace para activar tu cuenta y continuar.
           </p>
@@ -387,15 +583,21 @@ export default function LoginPage() {
 
       <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 sm:px-12 py-12 min-h-screen">
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <img src="/logo.png" alt="Logo NutriScan" className="w-9 h-9 rounded-xl bg-blue-700 text-white" />
-          <img src="/tituloNutriScan.png" alt="NutriScan" className="h-7" />
+          <img src="/logo.png" alt="Logo NutriScan" className="w-9 h-9 text-white" />
+          {/* Fondo blanco: logo negro */}
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-7" />
         </div>
 
-        <div className="flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
+        <div className="relative flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
+          <span
+            aria-hidden
+            className="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
+            style={{ transform: tab === 'login' ? 'translateX(0%)' : 'translateX(calc(100% + 0.25rem))' }}
+          />
           <button
             onClick={() => setTab('login')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-              tab === 'login' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-300 ${
+              tab === 'login' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -405,8 +607,8 @@ export default function LoginPage() {
           </button>
           <button
             onClick={() => setTab('register')}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all ${
-              tab === 'register' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-colors duration-300 ${
+              tab === 'register' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -416,17 +618,19 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {tab === 'login' ? (
-          <LoginForm />
-        ) : (
-          <RegisterFormInline onSuccess={() => setEmailSent(true)} />
-        )}
+        <div key={tab} className="w-full flex flex-col items-center animate-fade-slide">
+          {tab === 'login' ? (
+            <LoginForm />
+          ) : (
+            <RegisterFormInline onSuccess={() => setEmailSent(true)} />
+          )}
+        </div>
 
         {/* MODIFICACIÓN: Renderizado condicional para mostrar solo en 'register' */}
         {tab === 'register' && (
           <p className="mt-8 text-xs text-gray-400">
             ¿Investigador?{' '}
-            <Link href="/register?type=investigador" className="text-blue-600 hover:underline">
+            <Link href="/register/investigador" className="text-blue-600 hover:underline">
               Registrarse con código de acceso
             </Link>
           </p>

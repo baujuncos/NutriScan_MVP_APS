@@ -2,24 +2,26 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createClient } from '@/lib/supabase/client';
+import { strongPasswordSchema } from '@/lib/password';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import PasswordRules from '@/components/ui/PasswordRules';
+import AnimatedError from '@/components/ui/AnimatedError';
 
 const schema = z
   .object({
-    nombre: z.string().min(1, 'El nombre es requerido'),
-    apellido: z.string().min(1, 'El apellido es requerido'),
+    nombre: z.string().trim().min(1, 'El nombre es requerido'),
+    apellido: z.string().trim().min(1, 'El apellido es requerido'),
     email: z.string().email('Email inválido'),
-    password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+    password: strongPasswordSchema,
     confirmPassword: z.string(),
-    invitationCode: z.string().optional(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((d) => d.password === d.confirmPassword, {
     message: 'Las contraseñas no coinciden',
     path: ['confirmPassword'],
   });
@@ -37,6 +39,7 @@ const GoogleIcon = () => (
 
 export default function RegisterForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const isInvestigador = searchParams.get('type') === 'investigador';
   const supabase = createClient();
 
@@ -47,79 +50,58 @@ export default function RegisterForm() {
   const {
     register,
     handleSubmit,
-    getValues,
+    watch,
+    setError,
     formState: { errors, isSubmitting },
-  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({ resolver: zodResolver(schema), mode: 'onTouched' });
+
+  const passwordValue = watch('password') ?? '';
 
   const onSubmit = async (data: FormData) => {
     setServerError('');
-
-    // Validate investigator code server-side
-    if (isInvestigador) {
-      const res = await fetch('/api/validate-investigator', {
+    try {
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: data.invitationCode ?? '' }),
-      });
-      const json = await res.json();
-      if (!json.valid) {
-        setServerError('Código de investigador inválido.');
-        return;
-      }
-    }
-
-    // The role is determined in the callback after email confirmation.
-    // For investigators the role is stored in the redirect URL.
-    const callbackUrl = isInvestigador
-      ? `${window.location.origin}/auth/callback?role=investigador`
-      : `${window.location.origin}/auth/callback`;
-
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: {
-        // nombre and apellido are stored in metadata so the callback can
-        // create the profile row after the user confirms their email.
-        data: {
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
           nombre: data.nombre,
           apellido: data.apellido,
-        },
-        emailRedirectTo: callbackUrl,
-      },
-    });
-
-    if (signUpError) {
-      setServerError(signUpError.message);
-      return;
-    }
-
-    // Profile row is created in /auth/callback after email confirmation.
-    // Show a confirmation message instead of redirecting immediately.
-    setEmailSent(true);
-  };
-
-  const handleGoogleAuth = async (role?: 'investigador') => {
-    // For investigadores using Google, validate the code first.
-    if (role === 'investigador') {
-      const code = getValues('invitationCode') ?? '';
-      const res = await fetch('/api/validate-investigator', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+          ...(isInvestigador ? { role: 'investigador' } : {}),
+        }),
       });
-      const json = await res.json();
-      if (!json.valid) {
-        setServerError('Código de investigador inválido.');
+      const json = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setError('email', { message: 'Ya existe una cuenta con este email.' });
         return;
       }
+      if (res.status === 403 && json?.error === 'INV_CODE_REQUIRED') {
+        setServerError(json.message ?? 'Volvé a ingresar el código de investigador.');
+        router.push('/register/investigador');
+        return;
+      }
+      if (!res.ok) {
+        if (json?.field === 'password') {
+          setError('password', { message: json.message });
+        } else if (json?.field === 'email') {
+          setError('email', { message: json.message });
+        } else {
+          setServerError(json?.message ?? 'No pudimos crear la cuenta.');
+        }
+        return;
+      }
+      setEmailSent(true);
+    } catch {
+      setServerError('Error de conexión. Intentá de nuevo.');
     }
+  };
 
+  const handleGoogleAuth = async () => {
     setGoogleLoading(true);
-    const redirectTo =
-      role === 'investigador'
-        ? `${window.location.origin}/auth/callback?role=investigador`
-        : `${window.location.origin}/auth/callback`;
-
+    const redirectTo = isInvestigador
+      ? `${window.location.origin}/auth/callback?role=investigador`
+      : `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -132,19 +114,18 @@ export default function RegisterForm() {
 
   if (emailSent) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
+      <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-8">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
             <span className="text-3xl">📧</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisa tu email!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">¡Revisá tu email!</h2>
           <p className="text-gray-600 mb-4">
-            Te enviamos un enlace de confirmación. Haz clic en el enlace para activar tu cuenta y
-            continuar el registro.
+            Te enviamos un enlace de confirmación. Hacé clic en el enlace para activar tu cuenta y continuar el registro.
           </p>
           <p className="text-sm text-gray-500">
             ¿Ya confirmaste?{' '}
-            <Link href="/login" className="font-medium text-green-600 hover:underline">
+            <Link href="/login" className="font-medium text-blue-700 hover:underline">
               Iniciar Sesión
             </Link>
           </p>
@@ -154,125 +135,116 @@ export default function RegisterForm() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4 py-8">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-xl">
-        <div className="mb-6 text-center">
-          <Link href="/" className="inline-block">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-green-600">
-              <span className="text-2xl">🥗</span>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white px-4 py-4 flex items-center border-b border-gray-100">
+        <div className="flex items-center gap-2.5">
+          <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
+          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
+        </div>
+      </header>
+
+      <main className="flex flex-col items-center justify-center px-4 py-10 min-h-[calc(100vh-64px)]">
+        <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-sm border border-gray-100">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 text-center">
+              {isInvestigador ? 'Registro Investigador' : 'Crear Cuenta'}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 text-center">
+              {isInvestigador ? 'Acceso exclusivo para investigadores UCC' : 'Únete a NutriScan hoy'}
+            </p>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="mb-4 w-full"
+            loading={googleLoading}
+            onClick={handleGoogleAuth}
+          >
+            <GoogleIcon />
+            {isInvestigador ? 'Registrarse con Google como Investigador' : 'Registrarse con Google'}
+          </Button>
+
+          <div className="relative mb-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-200" />
             </div>
-          </Link>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {isInvestigador ? 'Registro Investigador' : 'Crear Cuenta'}
-          </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {isInvestigador
-              ? 'Acceso exclusivo para investigadores UCC'
-              : 'Únete a NutriScan hoy'}
+            <div className="relative flex justify-center text-xs text-gray-400">
+              <span className="bg-white px-2">o con tu email</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                id="nombre"
+                label="Nombre"
+                placeholder="Juan"
+                error={errors.nombre?.message}
+                {...register('nombre')}
+              />
+              <Input
+                id="apellido"
+                label="Apellido"
+                placeholder="Pérez"
+                error={errors.apellido?.message}
+                {...register('apellido')}
+              />
+            </div>
+
+            <Input
+              id="email"
+              label="Email"
+              type="email"
+              placeholder={isInvestigador ? 'investigador@ucc.edu.ar' : 'tu@email.com'}
+              error={errors.email?.message}
+              {...register('email')}
+            />
+
+            <div>
+              <Input
+                id="password"
+                label="Contraseña"
+                type="password"
+                placeholder="••••••••"
+                error={errors.password?.message}
+                {...register('password')}
+              />
+              <PasswordRules value={passwordValue} className="mt-2" />
+            </div>
+
+            <Input
+              id="confirmPassword"
+              label="Confirmar Contraseña"
+              type="password"
+              placeholder="••••••••"
+              error={errors.confirmPassword?.message}
+              {...register('confirmPassword')}
+            />
+
+            <AnimatedError message={serverError} className="mb-0" />
+
+            {!isInvestigador && (
+              <p className="text-xs text-gray-500">
+                Si tu email es <strong>@ucc.edu.ar</strong>, al confirmar tu cuenta podrás elegir cómo
+                usarás NutriScan.
+              </p>
+            )}
+
+            <Button type="submit" size="lg" loading={isSubmitting} className="w-full mt-2">
+              {isInvestigador ? 'Acceder como Investigador' : 'Crear Cuenta'}
+            </Button>
+          </form>
+
+          <p className="mt-5 text-center text-sm text-gray-500">
+            ¿Ya tienes cuenta?{' '}
+            <Link href="/login" className="font-medium text-blue-700 hover:underline">
+              Iniciar Sesión
+            </Link>
           </p>
         </div>
-
-        {/* Google OAuth button */}
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="mb-4 w-full"
-          loading={googleLoading}
-          onClick={() => handleGoogleAuth(isInvestigador ? 'investigador' : undefined)}
-        >
-          <GoogleIcon />
-          {isInvestigador ? 'Registrarse con Google como Investigador' : 'Registrarse con Google'}
-        </Button>
-
-        <div className="relative mb-4">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-gray-200" />
-          </div>
-          <div className="relative flex justify-center text-xs text-gray-400">
-            <span className="bg-white px-2">o con tu email</span>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              id="nombre"
-              label="Nombre"
-              placeholder="Juan"
-              error={errors.nombre?.message}
-              {...register('nombre')}
-            />
-            <Input
-              id="apellido"
-              label="Apellido"
-              placeholder="Pérez"
-              error={errors.apellido?.message}
-              {...register('apellido')}
-            />
-          </div>
-
-          <Input
-            id="email"
-            label="Email"
-            type="email"
-            placeholder={isInvestigador ? 'investigador@ucc.edu.ar' : 'tu@email.com'}
-            error={errors.email?.message}
-            {...register('email')}
-          />
-
-          <Input
-            id="password"
-            label="Contraseña"
-            type="password"
-            placeholder="••••••••"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-
-          <Input
-            id="confirmPassword"
-            label="Confirmar Contraseña"
-            type="password"
-            placeholder="••••••••"
-            error={errors.confirmPassword?.message}
-            {...register('confirmPassword')}
-          />
-
-          {isInvestigador && (
-            <Input
-              id="invitationCode"
-              label="Código de Investigador"
-              type="password"
-              placeholder="Ingresa tu código de acceso"
-              error={errors.invitationCode?.message}
-              {...register('invitationCode')}
-            />
-          )}
-
-          {serverError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-          )}
-
-          {!isInvestigador && (
-            <p className="text-xs text-gray-500">
-              Si tu email es <strong>@ucc.edu.ar</strong>, al confirmar tu cuenta podrás elegir cómo
-              usarás NutriScan.
-            </p>
-          )}
-
-          <Button type="submit" size="lg" loading={isSubmitting} className="w-full">
-            {isInvestigador ? 'Acceder como Investigador' : 'Crear Cuenta'}
-          </Button>
-        </form>
-
-        <p className="mt-5 text-center text-sm text-gray-500">
-          ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-medium text-green-600 hover:underline">
-            Iniciar Sesión
-          </Link>
-        </p>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

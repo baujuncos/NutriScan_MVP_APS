@@ -2,9 +2,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import LogoutButton from '@/components/auth/LogoutButton';
 import BottomNav from '@/components/BottomNav';
+import AthleteSidebar from '@/components/AthleteSidebar';
+import { getRoleLabel } from '@/lib/roles';
 import { createClient } from '@/lib/supabase/server';
 import { INGESTA_TIPOS, formatIngestaLabel, type IngestaTipo, isValidDateInput } from '@/lib/nutrition';
+import { todayAR } from '@/lib/date';
 import AlimentacionClient from './AlimentacionClient';
+import DatePicker from './DatePicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,14 +65,49 @@ const MEAL_COLOR: Record<IngestaTipo, string> = {
   suplemento: '#7c3aed',
 };
 
-const MEAL_ICON: Record<IngestaTipo, string> = {
-  desayuno: '☀️',
-  almuerzo: '🍽️',
-  merienda: '🍪',
-  cena: '🌙',
-  colacion: '🍎',
-  suplemento: '💊',
-};
+function MealIcon({ tipo, size = 20 }: { tipo: IngestaTipo; size?: number }) {
+  const sw = 1.8;
+  if (tipo === 'desayuno') return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+    </svg>
+  );
+  if (tipo === 'almuerzo') return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+      <path d="M7 2v20" />
+      <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3" />
+      <path d="M21 15v7" />
+    </svg>
+  );
+  if (tipo === 'merienda') return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5" />
+      <path d="M8.5 8.5v.01" />
+      <path d="M16 15.5v.01" />
+      <path d="M12 12v.01" />
+      <path d="M11 17v.01" />
+      <path d="M7 14v.01" />
+    </svg>
+  );
+  if (tipo === 'cena') return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+  );
+  if (tipo === 'colacion') return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 13.94 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" />
+      <path d="M10 2c1 .5 2 2 2 5" />
+    </svg>
+  );
+  return (
+    <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+      <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" />
+      <path d="m8.5 8.5 7 7" />
+    </svg>
+  );
+}
 
 export default async function AlimentacionPage({
   searchParams,
@@ -76,12 +115,10 @@ export default async function AlimentacionPage({
   searchParams: Promise<{ fecha?: string; tipo?: string }>;
 }) {
   const params = await searchParams;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayAR();
   const fecha = params.fecha && isValidDateInput(params.fecha) ? params.fecha : today;
   const selectedTipo = (
-    params.tipo && INGESTA_TIPOS.includes(params.tipo as IngestaTipo)
-      ? params.tipo
-      : 'desayuno'
+    params.tipo && INGESTA_TIPOS.includes(params.tipo as IngestaTipo) ? params.tipo : 'desayuno'
   ) as IngestaTipo;
 
   const supabase = await createClient();
@@ -90,7 +127,7 @@ export default async function AlimentacionPage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('nombre, role')
+    .select('nombre, apellido, role')
     .eq('user_id', user.id)
     .single();
 
@@ -121,124 +158,110 @@ export default async function AlimentacionPage({
   ingestas.forEach((i) => ingestaByTipo.set(i.tipo, i));
 
   const totalKcal = ingestas.reduce((a, i) => a + toNum(i.kcal_total), 0);
-
   const selectedIngesta = ingestaByTipo.get(selectedTipo) ?? null;
   const selectedKcal = toNum(selectedIngesta?.kcal_total);
   const selectedItems = selectedIngesta?.items?.length ?? 0;
 
   const gradient = MEAL_GRADIENT[selectedTipo];
   const accentColor = MEAL_COLOR[selectedTipo];
-  const icon = MEAL_ICON[selectedTipo];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* Top bar */}
-      <header className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8 text-white" />
-          <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
-        </div>
-        <LogoutButton />
-      </header>
+    <>
+      <AthleteSidebar nombre={profile.nombre} apellido={profile.apellido ?? ''} roleLabel={getRoleLabel(profile.role)} />
 
-      {/* Meal banner */}
-      <div className="mx-4 mt-4 rounded-2xl text-white p-5" style={{ background: gradient }}>
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Registro de comidas</p>
-        <div className="flex items-center justify-between mt-2">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <span>{icon}</span>
-              <span>{formatIngestaLabel(selectedTipo)}</span>
-            </h2>
-            <p className="text-sm text-white/70 mt-0.5">
-              {selectedItems === 0 ? 'Sin registros aún' : `${selectedItems} ítem${selectedItems !== 1 ? 's' : ''} cargado${selectedItems !== 1 ? 's' : ''}`}
-            </p>
+      <div key="alimentacion" className="min-h-screen bg-slate-50 pb-24 lg:pb-0 lg:pl-64 overflow-x-hidden animate-page-in">
+
+        {/* Mobile-only header */}
+        <header className="lg:hidden bg-white px-4 py-4 flex items-center justify-between border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.png" alt="Logo NutriScan" className="w-8 h-8" />
+            <img src="/tituloNutriScanNEGRO.png" alt="NutriScan" className="h-6" />
           </div>
-          <div
-            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
-            style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
-          >
-            🔥 {Math.round(selectedKcal)} kcal
-          </div>
+          <LogoutButton />
+        </header>
+
+        {/* Desktop page title */}
+        <div className="hidden lg:block bg-white shadow-sm px-8 py-5">
+          <h1 className="text-2xl font-bold text-gray-900">Registro de Comidas</h1>
         </div>
 
-        {/* Daily total sub-line */}
-        {totalKcal > 0 && (
-          <p className="text-xs text-white/60 mt-2">
-            Total del día: {Math.round(totalKcal)} kcal
-          </p>
-        )}
-      </div>
+        {/* Centered content */}
+        <div className="w-full max-w-4xl mx-auto px-4 lg:px-6 py-4">
 
-      {/* Meal type tabs */}
-      <div className="overflow-x-auto px-4 py-3">
-        <div className="flex gap-2 min-w-max">
-          {INGESTA_TIPOS.map((tipo) => {
-            const isActive = tipo === selectedTipo;
-            const hasItems = (ingestaByTipo.get(tipo)?.items?.length ?? 0) > 0;
-            return (
-              <Link
-                key={tipo}
-                href={`/alimentacion?fecha=${fecha}&tipo=${tipo}`}
-                className="flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border"
-                style={
-                  isActive
-                    ? {
-                        backgroundColor: accentColor,
-                        borderColor: accentColor,
-                        color: 'white',
-                      }
-                    : {
-                        backgroundColor: 'white',
-                        borderColor: '#e5e7eb',
-                        color: '#6b7280',
-                      }
-                }
+          {/* Meal banner */}
+          <div className="rounded-2xl text-white p-5" style={{ background: gradient }}>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/70">Registro de comidas</p>
+            <div className="flex items-center justify-between mt-2">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <MealIcon tipo={selectedTipo} size={28} />
+                  <span>{formatIngestaLabel(selectedTipo)}</span>
+                </h2>
+                <p className="text-sm text-white/70 mt-0.5">
+                  {selectedItems === 0
+                    ? 'Sin registros aún'
+                    : `${selectedItems} ítem${selectedItems !== 1 ? 's' : ''} cargado${selectedItems !== 1 ? 's' : ''}`}
+                </p>
+              </div>
+              <div
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold"
+                style={{ backgroundColor: 'rgba(255,255,255,0.25)' }}
               >
-                <span className="text-base leading-none">{MEAL_ICON[tipo]}</span>
-                <span>{formatIngestaLabel(tipo)}</span>
-                {hasItems && !isActive && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: MEAL_COLOR[tipo] }}
-                  />
-                )}
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+                🔥 {Math.round(selectedKcal)} kcal
+              </div>
+            </div>
+            {totalKcal > 0 && (
+              <p className="text-xs text-white/60 mt-2">Total del día: {Math.round(totalKcal)} kcal</p>
+            )}
+          </div>
 
-      {/* Date picker */}
-      <div className="px-4 pb-2">
-        <form className="flex items-center gap-2">
-          <input type="hidden" name="tipo" value={selectedTipo} />
-          <input
-            name="fecha"
-            type="date"
-            defaultValue={fecha}
-            className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+          {/* Meal type tabs — stacked/wrapping on mobile, grid only in desktop */}
+          <div className="py-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {INGESTA_TIPOS.map((tipo) => {
+                const isActive = tipo === selectedTipo;
+                const hasItems = (ingestaByTipo.get(tipo)?.items?.length ?? 0) > 0;
+                return (
+                  <Link
+                    key={tipo}
+                    href={`/alimentacion?fecha=${fecha}&tipo=${tipo}`}
+                    className="w-full flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border text-center"
+                    style={
+                      isActive
+                        ? { backgroundColor: accentColor, borderColor: accentColor, color: 'white' }
+                        : { backgroundColor: 'white', borderColor: '#e5e7eb', color: '#6b7280' }
+                    }
+                  >
+                    <span className="leading-none">
+                      <MealIcon tipo={tipo} size={18} />
+                    </span>
+                    <span>{formatIngestaLabel(tipo)}</span>
+                    {hasItems && !isActive && (
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: MEAL_COLOR[tipo] }} />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date picker */}
+          <div className="pb-3">
+            <DatePicker fecha={fecha} tipo={selectedTipo} />
+          </div>
+
+          {/* Search + items */}
+          <AlimentacionClient
+            alimentos={alimentos}
+            ingesta={selectedIngesta}
+            tipoIngesta={selectedTipo}
+            fecha={fecha}
           />
-          <button
-            type="submit"
-            className="rounded-xl bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 text-sm font-medium transition-colors"
-          >
-            Ver
-          </button>
-        </form>
-      </div>
 
-      {/* Client component: search + add + items */}
-      <div className="px-4 pt-2 pb-4">
-        <AlimentacionClient
-          alimentos={alimentos}
-          ingesta={selectedIngesta}
-          tipoIngesta={selectedTipo}
-          fecha={fecha}
-        />
-      </div>
+        </div>
 
-      <BottomNav />
-    </div>
+        <BottomNav />
+      </div>
+    </>
   );
 }

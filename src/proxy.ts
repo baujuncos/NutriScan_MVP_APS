@@ -30,9 +30,12 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes - accessible without auth
-  const publicRoutes = ['/', '/login', '/register', '/auth/callback'];
-  const isPublicRoute = 
-    publicRoutes.some((r) => pathname === r || pathname.startsWith('/auth/')) ||
+  const publicRoutes = ['/', '/login', '/auth/callback'];
+  const isPublicRoute =
+    publicRoutes.some((r) => pathname === r) ||
+    pathname.startsWith('/auth/') ||
+    pathname === '/register' ||
+    pathname.startsWith('/register/') ||
     pathname.startsWith('/api/'); // Allow all /api/* routes
 
   if (!user && !isPublicRoute) {

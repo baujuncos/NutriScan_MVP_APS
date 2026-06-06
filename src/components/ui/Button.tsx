@@ -14,11 +14,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
 
     const variants = {
-      primary: 'bg-blue-700 text-white hover:bg-blue-800 focus:ring-blue-500',
-      secondary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+      primary: 'text-white focus:ring-blue-500',
+      secondary: 'text-white focus:ring-blue-500',
       outline: 'border border-blue-700 text-blue-700 hover:bg-blue-50 focus:ring-blue-500',
       ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-400',
     };
+
+    const gradientStyle = variant === 'primary' || variant === 'secondary'
+      ? {
+          backgroundImage: 'linear-gradient(90deg, #3B82F6 0%, #22C55E 100%)',
+          boxShadow: '0 0 0 1px rgba(59,130,246,0.18), 0 8px 24px rgba(59,130,246,0.18), 0 0 22px rgba(34,197,94,0.14)',
+        }
+      : undefined;
 
     const sizes = {
       sm: 'px-3 py-1.5 text-sm',
@@ -31,6 +38,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled || loading}
         className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        style={gradientStyle}
         {...props}
       >
         {loading && (
