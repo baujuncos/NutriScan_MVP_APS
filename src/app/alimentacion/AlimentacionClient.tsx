@@ -132,7 +132,7 @@ export default function AlimentacionClient({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full">
       {/* Search */}
       <div className="relative">
         <div className="relative">
