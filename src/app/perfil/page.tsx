@@ -214,7 +214,7 @@ export default async function PerfilPage() {
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <h2 className="font-semibold text-gray-900 mb-2">Eliminar cuenta</h2>
           <p className="text-sm text-gray-500 mb-4">
-            Esta acción elimina tu cuenta y los datos asociados. Escribí <strong>eliminar</strong> para confirmarlo.
+            Esta acción elimina tu cuenta y los datos asociados. Escribí <strong>tu mail</strong> para confirmarlo.
           </p>
           <DeleteAccountAction
             displayName={`${profile.nombre} ${profile.apellido}`}
