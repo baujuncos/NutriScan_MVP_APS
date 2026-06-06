@@ -67,7 +67,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             </button>
           )}
         </div>
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        <div
+          className={`grid overflow-hidden transition-all duration-300 ease-out ${error ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <div className="min-h-0 overflow-hidden">
+            {error ? <p className="text-xs text-red-500 pt-0.5">{error}</p> : null}
+          </div>
+        </div>
       </div>
     );
   },

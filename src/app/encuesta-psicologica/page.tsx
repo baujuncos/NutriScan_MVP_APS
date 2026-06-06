@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
 import OnboardingProgress from '@/components/onboarding/OnboardingProgress';
+import AnimatedError from '@/components/ui/AnimatedError';
 
 const PREGUNTAS = [
   'Suelo tener problemas para concentrarme mientras compito.',
@@ -203,9 +204,7 @@ export default function EncuestaPsicologicaPage() {
             {respuestas.filter((r) => r !== null).length} / {PREGUNTAS.length} respondidas
           </p>
 
-          {serverError && (
-            <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-          )}
+          <AnimatedError message={serverError} className="mb-3" />
 
           <Button
             type="button"

@@ -11,6 +11,7 @@ import { strongPasswordSchema } from '@/lib/password';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import PasswordRules from '@/components/ui/PasswordRules';
+import AnimatedError from '@/components/ui/AnimatedError';
 
 const schema = z
   .object({
@@ -222,9 +223,7 @@ export default function RegisterForm() {
               {...register('confirmPassword')}
             />
 
-            {serverError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-            )}
+            <AnimatedError message={serverError} className="mb-0" />
 
             {!isInvestigador && (
               <p className="text-xs text-gray-500">

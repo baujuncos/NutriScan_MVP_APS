@@ -9,11 +9,12 @@ import { createClient } from '@/lib/supabase/client';
 import { strongPasswordSchema } from '@/lib/password';
 import PasswordRules from '@/components/ui/PasswordRules';
 import Input from '@/components/ui/Input';
+import AnimatedError from '@/components/ui/AnimatedError';
 import Link from 'next/link';
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(6, 'Mínimo 8 caracteres'),
 });
 
 const registerSchema = z
@@ -176,9 +177,7 @@ function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent transition-all"
           />
         </div>
-        {error && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">{error}</div>
-        )}
+        <AnimatedError message={error} className="mb-0" />
         <button
           type="submit"
           disabled={loading}
@@ -356,11 +355,7 @@ function LoginForm() {
           />
         </div>
 
-        {serverError && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">
-            {serverError}
-          </div>
-        )}
+        <AnimatedError message={serverError} className="mb-0" />
 
         <button
           type="submit"
@@ -515,11 +510,7 @@ function RegisterFormInline({ onSuccess }: { onSuccess: () => void }) {
           Si tu mail es <strong>@ucc.edu.ar</strong>, podrás elegir cómo usarás NutriScan al confirmar tu cuenta.
         </p>
 
-        {serverError && (
-          <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600 border border-red-100">
-            {serverError}
-          </div>
-        )}
+        <AnimatedError message={serverError} className="mb-0" />
 
         <button
           type="submit"

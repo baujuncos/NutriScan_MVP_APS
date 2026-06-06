@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { extractNombreApellido } from '@/lib/roles';
 import Button from '@/components/ui/Button';
+import AnimatedError from '@/components/ui/AnimatedError';
 
 type Usage = 'deportista_ucc' | 'particular';
 
@@ -168,9 +169,7 @@ export default function ElegirUsoPage() {
           </button>
         </div>
 
-        {serverError && (
-          <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{serverError}</p>
-        )}
+        <AnimatedError message={serverError} className="mb-4" />
 
         <Button
           type="button"
