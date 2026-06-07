@@ -181,8 +181,8 @@ export default async function AlimentacionPage({
         </header>
 
         {/* Desktop page title */}
-        <div className="hidden lg:block bg-white shadow-sm px-8 py-5">
-          <h1 className="text-2xl font-bold text-gray-900">Registro de Comidas</h1>
+        <div className="hidden lg:block px-8 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">Registro de Comidas</h1>
         </div>
 
         {/* Centered content */}
@@ -225,12 +225,12 @@ export default async function AlimentacionPage({
                   <Link
                     key={tipo}
                     href={`/alimentacion?fecha=${fecha}&tipo=${tipo}`}
-                    className="w-full flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border text-center"
-                    style={
+                    className={`w-full flex flex-col items-center gap-1 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all border text-center ${
                       isActive
-                        ? { backgroundColor: accentColor, borderColor: accentColor, color: 'white' }
-                        : { backgroundColor: 'white', borderColor: '#e5e7eb', color: '#6b7280' }
-                    }
+                        ? ''
+                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    }`}
+                    style={isActive ? { backgroundColor: accentColor, borderColor: accentColor, color: 'white' } : undefined}
                   >
                     <span className="leading-none">
                       <MealIcon tipo={tipo} size={18} />

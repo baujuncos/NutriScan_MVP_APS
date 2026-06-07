@@ -90,8 +90,8 @@ export default async function PerfilPage() {
         </header>
 
         {/* Desktop page header */}
-        <div className="hidden lg:block bg-white shadow-sm px-8 py-5">
-          <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
+        <div className="hidden lg:block px-8 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
         </div>
 
         <main className="px-4 py-5 max-w-5xl mx-auto lg:px-8 lg:py-8 space-y-5">

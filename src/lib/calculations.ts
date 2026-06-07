@@ -57,3 +57,7 @@ export function calcularPerfilNutricional(
     ...macros,
   };
 }
+
+export function calcularKcalRestantes(meta: number, consumido: number): number {
+  return Math.max(0, Math.round(meta - consumido));
+}

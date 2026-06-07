@@ -371,6 +371,7 @@ export async function generateExcelAction(
         const hydration = hidraMap.get(`${p.user_id}_${fecha}`) ?? 0;
         const dateIngestas = ingeByUser.get(p.user_id)?.get(fecha) ?? [];
         let isFirstOfDate = true;
+        const dateStartRow = ri;
 
         if (dateIngestas.length === 0) {
           writeRow(fecha, '', '', '', '', '', '', '', hydration || '', isFirstOfAthlete);
@@ -405,6 +406,14 @@ export async function generateExcelAction(
               }
             }
           }
+        }
+
+        // Merge hydration cell vertically across all rows of this date
+        const dateEndRow = ri - 1;
+        if (dateEndRow > dateStartRow) {
+          ws.mergeCells(dateStartRow, 39, dateEndRow, 39);
+          const hydCell = ws.getCell(dateStartRow, 39);
+          hydCell.alignment = { horizontal: 'center', vertical: 'middle' };
         }
       }
     }
