@@ -86,7 +86,7 @@ export default function HidratacionCard({ initialMl }: { initialMl: number }) {
   const filledSegments = Math.min(TOTAL_GLASSES, glasses);
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm">
+    <div className="bg-white rounded-2xl p-5 shadow-sm transition-shadow duration-200 hover:shadow-md">
       {/* Header row */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">

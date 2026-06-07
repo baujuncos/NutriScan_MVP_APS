@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { INGESTA_TIPOS, ITEM_TIPOS, isValidDateInput, toFixed2 } from '@/lib/nutrition';
+import { todayAR, daysAgoAR } from '@/lib/date';
+
+function isWithinEditableRange(fecha: string): boolean {
+  return fecha >= daysAgoAR(7) && fecha <= todayAR();
+}
 
 const MAX_CANTIDAD = 2000;
 
@@ -20,6 +25,7 @@ export async function addItemAction(formData: FormData) {
   const cantidadRaw = getStringField(formData, 'cantidad');
 
   if (!isValidDateInput(fecha)) redirect('/alimentacion');
+  if (!isWithinEditableRange(fecha)) redirect(`/alimentacion?fecha=${fecha}&tipo=${tipoIngesta}`);
   if (!INGESTA_TIPOS.includes(tipoIngesta as (typeof INGESTA_TIPOS)[number])) {
     redirect(`/alimentacion?fecha=${fecha}`);
   }
@@ -144,6 +150,7 @@ export async function updateItemAction(formData: FormData) {
   const cantidadRaw = getStringField(formData, 'cantidad');
 
   if (!isValidDateInput(fecha)) redirect('/alimentacion');
+  if (!isWithinEditableRange(fecha)) redirect(`/alimentacion?fecha=${fecha}&tipo=${tipoIngesta}`);
   if (!INGESTA_TIPOS.includes(tipoIngesta as (typeof INGESTA_TIPOS)[number])) {
     redirect(`/alimentacion?fecha=${fecha}`);
   }

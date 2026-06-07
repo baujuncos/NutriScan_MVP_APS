@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { todayAR } from '@/lib/date';
+import { todayAR, daysAgoAR } from '@/lib/date';
 
 function formatFechaTitle(fecha: string): string {
   if (fecha === todayAR()) return 'Hoy';
@@ -97,6 +97,7 @@ export default function AlimentacionClient({
   const accentColor = MEAL_COLOR[tipoIngesta];
   const label = MEAL_LABEL[tipoIngesta];
   const items = ingesta?.items ?? [];
+  const canEdit = fecha >= daysAgoAR(7) && fecha <= todayAR();
 
   // For "suplemento" only show supplement-category foods; for everything else exclude them
   const alimentosFiltrados =
@@ -133,7 +134,14 @@ export default function AlimentacionClient({
 
   return (
     <div className="space-y-4 w-full">
+      {!canEdit && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          Solo podés cargar o editar comidas de hoy hasta 7 días atrás. Esta fecha es de solo lectura.
+        </div>
+      )}
+
       {/* Search */}
+      {canEdit && (
       <div className="relative">
         <div className="relative">
           <svg
@@ -181,9 +189,10 @@ export default function AlimentacionClient({
           </div>
         )}
       </div>
+      )}
 
       {/* Add form (shown when food is selected) */}
-      {selectedAlimento && (
+      {canEdit && selectedAlimento && (
         <form
           action={addItemAction}
           className="rounded-2xl border p-4 space-y-3"
@@ -221,7 +230,7 @@ export default function AlimentacionClient({
               max={MAX_CANTIDAD}
               step="any"
               required
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all"
+              className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 transition-all"
               style={{ ['--tw-ring-color' as string]: `${accentColor}40` }}
             />
             <span className="text-sm text-gray-500 font-medium pr-1">g</span>
@@ -263,7 +272,7 @@ export default function AlimentacionClient({
           <div className="space-y-2">
             {items.map((item) => (
               <div key={item.id_item} className="bg-white rounded-2xl border border-gray-100 p-4">
-                {editingItemId === item.id_item ? (
+                {canEdit && editingItemId === item.id_item ? (
                   /* Inline edit form */
                   <form action={updateItemAction} className="space-y-2">
                     <input type="hidden" name="fecha" value={fecha} />
@@ -281,7 +290,7 @@ export default function AlimentacionClient({
                         step="any"
                         required
                         autoFocus
-                        className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-all"
+                        className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 transition-all"
                         style={{ ['--tw-ring-color' as string]: `${accentColor}40` }}
                       />
                       <span className="text-sm text-gray-500 font-medium">g</span>
@@ -320,15 +329,17 @@ export default function AlimentacionClient({
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {/* Edit button */}
-                      <button
-                        type="button"
-                        onClick={() => handleStartEdit(item)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                      >
-                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
-                        </svg>
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(item)}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        >
+                          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125" />
+                          </svg>
+                        </button>
+                      )}
                       {/* Delete button */}
                       <form action={deleteItemAction} className="flex-shrink-0">
                         <input type="hidden" name="fecha" value={fecha} />

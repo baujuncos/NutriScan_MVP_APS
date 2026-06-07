@@ -12,6 +12,18 @@ import { getRoleLabel } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
+const ACTIVITY_LABELS: Record<string, string> = {
+  '1.2': 'Sedentario',
+  '1.375': 'Ligero',
+  '1.55': 'Moderado',
+  '1.725': 'Intenso',
+};
+
+function getActivityLabel(factorActividad: number | null | undefined): string | null {
+  if (factorActividad == null) return null;
+  return ACTIVITY_LABELS[String(factorActividad)] ?? null;
+}
+
 export default async function PerfilPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -78,8 +90,8 @@ export default async function PerfilPage() {
         </header>
 
         {/* Desktop page header */}
-        <div className="hidden lg:block bg-white shadow-sm px-8 py-5">
-          <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
+        <div className="hidden lg:block px-8 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">Mi Perfil</h1>
         </div>
 
         <main className="px-4 py-5 max-w-5xl mx-auto lg:px-8 lg:py-8 space-y-5">
@@ -126,7 +138,11 @@ export default async function PerfilPage() {
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="grid grid-cols-4 divide-x divide-gray-100">
               <StatCell
-                value={academicData?.frecuencia_practicas_semana ? `${academicData.frecuencia_practicas_semana}x/sem` : '—'}
+                value={
+                  academicData?.frecuencia_practicas_semana
+                    ? `${academicData.frecuencia_practicas_semana}x/sem`
+                    : getActivityLabel(physicalData?.factor_actividad) ?? '—'
+                }
                 label="Frecuencia"
               />
               <StatCell value={academicData?.anio ? String(academicData.anio) : '—'} label="Ingreso" />
