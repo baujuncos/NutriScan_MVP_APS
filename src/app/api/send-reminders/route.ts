@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   <p>Hola ${nombre || ''},</p>
   <p>Este es un recordatorio para que registres tus comidas principales de hoy en NutriScan.</p>
   <p>Te falta cargar: ${faltantes.map(f => f.charAt(0).toUpperCase() + f.slice(1)).join(', ')}.</p>
-  <p>Accedé a la app aquí: <a href="https://nutri-scan-mvp-aps-git-feat-recordato-4adcdd-baujuncos-projects.vercel.app/login">NutriScan</a></p>
+  <p>Accedé a la app aquí: <a href="https://nutri-scan-mvp-aps.vercel.app/login">NutriScan</a></p>
   <p>Saludos,<br>Equipo NutriScan</p>
 `;
       try {
