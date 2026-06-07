@@ -124,9 +124,9 @@ export default async function HomePage() {
         </header>
 
         {/* Desktop page header */}
-        <div className="hidden lg:block bg-white shadow-sm px-8 py-5">
-          <p className="text-sm text-gray-500">Hola, {profile.nombre} 🔥</p>
-          <h1 className="text-2xl font-bold text-gray-900">Tu día en NutriScan</h1>
+        <div className="hidden lg:block px-8 py-6">
+          <p className="text-base text-gray-500">Hola, {profile.nombre} 🔥</p>
+          <h1 className="text-3xl font-bold text-gray-900">Tu día en NutriScan</h1>
         </div>
 
         <main className="w-full px-4 py-6 max-w-full mx-auto lg:px-8 lg:py-8 overflow-x-hidden">
@@ -143,7 +143,7 @@ export default async function HomePage() {
             <div className="space-y-5 w-full max-w-full mx-auto">
               {/* Calorie card */}
               <div
-                className="w-full max-w-full mx-auto rounded-2xl text-white p-5"
+                className="w-full max-w-full mx-auto rounded-2xl text-white p-5 transition-shadow duration-200 hover:shadow-lg"
                 style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #1b7a5e 100%)' }}
               >
                 <div className="flex flex-wrap items-center gap-5">
@@ -176,7 +176,7 @@ export default async function HomePage() {
 
               {/* Recent meals */}
               {recentIngestas.length > 0 ? (
-                <div className="w-full max-w-full mx-auto bg-white rounded-2xl p-5 shadow-sm overflow-x-hidden">
+                <div className="w-full max-w-full mx-auto bg-white rounded-2xl p-5 shadow-sm overflow-x-hidden transition-shadow duration-200 hover:shadow-md">
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h2 className="font-semibold text-gray-900">Últimas comidas</h2>
                     <Link href="/alimentacion" className="text-sm text-blue-600 font-medium">Ver todas ›</Link>
@@ -200,7 +200,7 @@ export default async function HomePage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
+                <div className="bg-white rounded-2xl p-6 shadow-sm text-center transition-shadow duration-200 hover:shadow-md">
                   <p className="text-gray-400 text-sm">Aún no registraste comidas hoy.</p>
                   <Link href="/alimentacion" className="mt-3 inline-block text-sm font-semibold text-blue-600 hover:underline">
                     Empezar a registrar →
@@ -212,7 +212,7 @@ export default async function HomePage() {
             {/* Right column */}
             <div className="space-y-5 w-full max-w-full mx-auto">
               {/* Meal status */}
-              <div className="w-full max-w-full mx-auto bg-white rounded-2xl p-5 shadow-sm overflow-x-hidden">
+              <div className="w-full max-w-full mx-auto bg-white rounded-2xl p-5 shadow-sm overflow-x-hidden transition-shadow duration-200 hover:shadow-md">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <h2 className="font-semibold text-gray-900">Estado de carga</h2>
                   <span className="text-sm text-gray-400">{loadedCount}/5 cargados</span>

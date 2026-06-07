@@ -591,7 +591,7 @@ export default function LoginPage() {
         <div className="relative flex bg-gray-100 rounded-full p-1 mb-8 w-full max-w-sm gap-1">
           <span
             aria-hidden
-            className="absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
+            className="absolute inset-y-1 left-1 w-[calc(50%-0.375rem)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
             style={{ transform: tab === 'login' ? 'translateX(0%)' : 'translateX(calc(100% + 0.25rem))' }}
           />
           <button

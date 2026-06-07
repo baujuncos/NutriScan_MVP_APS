@@ -84,7 +84,11 @@ export default function AthletesTable({ athletes, onSelectionChange, onRowClick 
     const an = anioFilter ? Number(anioFilter) : null;
 
     return athletes.filter((a) => {
-      if (q && !normalizeStr(`${a.nombre} ${a.apellido} ${a.email}`).includes(q)) return false;
+      if (q) {
+        const tokens = normalizeStr(`${a.nombre} ${a.apellido} ${a.email}`).split(/\s+/);
+        const words = q.split(/\s+/).filter(Boolean);
+        if (!words.every((w) => tokens.some((t) => t.startsWith(w)))) return false;
+      }
       if (unidadFilter && a.unidad_academica !== unidadFilter) return false;
       if (carreraFilter && a.carrera !== carreraFilter) return false;
       if (an !== null && a.anio !== an) return false;
