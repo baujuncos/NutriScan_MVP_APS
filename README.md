@@ -42,7 +42,7 @@ Los usuarios `deportista_ucc` pueden optar por registrarse como `particular` al 
 | Base de datos | Supabase (PostgreSQL + RLS) |
 | Autenticación | Supabase Auth (email + Google OAuth) |
 | Gráficos | Recharts |
-| Email | Resend + Nodemailer |
+| Email | Nodemailer |
 | Testing | Vitest |
 | Deploy | Vercel |
 
